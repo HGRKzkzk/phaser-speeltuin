@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { gameConfig } from './config'
-import { createGameState, createPath, getTargetSide, resolveAttempt, startNextLevel } from './rules'
+import {
+  chooseAdventureOption,
+  createGameState,
+  createPath,
+  enterAdventure,
+  getTargetSide,
+  isAdventureDue,
+  resolveAttempt,
+  startNextLevel,
+} from './rules'
 import { createSeededRandom } from './random'
 import type { GameState } from './types'
 
@@ -101,5 +110,53 @@ describe('latente affiniteit', () => {
     expect(next.path.targetSide).toBe('left')
     expect(next.affinity.right.red.correct).toBe(9)
     expect(next.affinity.left.red.shown + next.affinity.left.blue.shown).toBe(gameConfig.blocksPerPath)
+  })
+})
+
+describe('tekstavontuur', () => {
+  it('trekt bij het begin van een spel een geldige levelafstand', () => {
+    const state = createGameState(createSeededRandom(17))
+    expect(gameConfig.adventureLevelGapChoices).toContain(state.levelsUntilAdventure)
+    expect(state.adventure).toBeNull()
+    expect(state.adventureLog).toHaveLength(0)
+  })
+
+  it('telt het aantal levels tot het volgende avontuur af bij een stage win', () => {
+    const initial = createGameState(createSeededRandom(17))
+    const state = stateWith({
+      levelsUntilAdventure: 1,
+      edgeProgress: { left: 0, right: gameConfig.progressForStageWin - 1 },
+      path: initial.path,
+    })
+    const result = resolveAttempt(state, state.path.blocks[0])
+    expect(result.outcome).toBe('stage-win')
+    expect(result.state.levelsUntilAdventure).toBe(0)
+    expect(isAdventureDue(result.state)).toBe(true)
+  })
+
+  it('start een tekstavontuur met een scenario en een nieuwe levelafstand', () => {
+    const due = stateWith({ levelsUntilAdventure: 0, status: 'stage-win' })
+    const adventureState = enterAdventure(due, createSeededRandom(5))
+    expect(adventureState.status).toBe('adventure')
+    expect(adventureState.adventure?.scenario.choices.length).toBeGreaterThanOrEqual(2)
+    expect(gameConfig.adventureLevelGapChoices).toContain(adventureState.levelsUntilAdventure)
+  })
+
+  it('legt de gemaakte keuze vast en gaat direct verder met het volgende level', () => {
+    const due = stateWith({ levelsUntilAdventure: 0, status: 'stage-win', score: 12, level: 3 })
+    const adventureState = enterAdventure(due, createSeededRandom(5))
+    const scenario = adventureState.adventure!.scenario
+    const next = chooseAdventureOption(adventureState, 0, createSeededRandom(9))
+
+    expect(next.status).toBe('playing')
+    expect(next.level).toBe(4)
+    expect(next.score).toBe(12)
+    expect(next.adventure).toBeNull()
+    expect(next.adventureLog).toEqual([{ scenarioId: scenario.id, choiceId: scenario.choices[0].id }])
+  })
+
+  it('weigert een keuze buiten een tekstavontuur', () => {
+    const state = createGameState(createSeededRandom(17))
+    expect(() => chooseAdventureOption(state, 0)).toThrow()
   })
 })
