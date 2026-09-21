@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { gameConfig } from '../game/config'
 import { createGameState, resolveAttempt, startNextLevel } from '../game/rules'
-import type { BlockColor, BlockDirection, GameBlock, GameState, TargetSide } from '../game/types'
+import type { BlockColor, BlockDirection, GameBlock, GameState, HitQuality, TargetSide } from '../game/types'
 
 type BlockView = {
   block: GameBlock
@@ -16,6 +16,7 @@ export class GameScene extends Phaser.Scene {
   private state: GameState = createGameState()
   private blockViews: BlockView[] = []
   private inputIsLocked = false
+  private activeSinceMs = 0
 
   private redKey!: Phaser.Input.Keyboard.Key
   private blueKey!: Phaser.Input.Keyboard.Key
@@ -28,8 +29,10 @@ export class GameScene extends Phaser.Scene {
   private levelText!: Phaser.GameObjects.Text
   private sideText!: Phaser.GameObjects.Text
   private feedbackText!: Phaser.GameObjects.Text
+  private comboText!: Phaser.GameObjects.Text
   private overlay?: Phaser.GameObjects.Container
   private colorWash!: Phaser.GameObjects.Rectangle
+  private effectWash!: Phaser.GameObjects.Rectangle
   private progressBars!: Record<TargetSide, Phaser.GameObjects.Container>
   private affinityLights!: Record<TargetSide, Record<BlockColor, Phaser.GameObjects.Arc>>
 
@@ -59,10 +62,12 @@ export class GameScene extends Phaser.Scene {
       },
     }
     this.colorWash = this.add.rectangle(400, 250, 800, 500, 0xffffff, 0).setDepth(10)
+    this.effectWash = this.add.rectangle(400, 250, 800, 500, 0xffffff, 0).setDepth(11)
 
     this.scoreText = this.addText(24, 22, 'PUNTEN  0', 22).setOrigin(0)
     this.levelText = this.addText(776, 22, 'LEVEL  1', 22).setOrigin(1, 0)
     this.sideText = this.addText(400, 88, '', 22).setOrigin(0.5)
+    this.comboText = this.addText(400, 126, '', 24, '#f8fafc').setOrigin(0.5).setDepth(12)
     this.feedbackText = this.addText(400, 400, '', 22).setOrigin(0.5)
     this.addText(400, 464, 'Houd A = ROOD of D = BLAUW vast · druk daarna de pijl', 17, '#94a3b8').setOrigin(0.5)
 
@@ -100,12 +105,14 @@ export class GameScene extends Phaser.Scene {
 
   private startGame() {
     this.overlay?.destroy(true)
-    this.state = createGameState()
+    this.state = createGameState(Math.random, this.time.now)
     this.inputIsLocked = false
     this.scoreText.setText('PUNTEN  0')
     this.levelText.setText('LEVEL  1')
     this.feedbackText.setText('')
+    this.comboText.setText('')
     this.colorWash.setAlpha(0)
+    this.effectWash.setAlpha(0)
     this.syncProgressBars()
     this.updateAffinityLights()
     this.renderPath()
@@ -125,6 +132,7 @@ export class GameScene extends Phaser.Scene {
     })
 
     this.markActiveBlock()
+    this.activeSinceMs = this.time.now
   }
 
   private createBlockView(x: number, y: number, block: GameBlock) {
@@ -164,12 +172,20 @@ export class GameScene extends Phaser.Scene {
     const activeView = this.blockViews[this.state.path.activeIndex]
     if (!activeView) return
 
-    const resolution = resolveAttempt(this.state, { color, direction })
+    const nowMs = this.time.now
+    const previousMultiplier = this.state.combo.multiplier
+    const resolution = resolveAttempt(this.state, {
+      color,
+      direction,
+      atMs: nowMs,
+      responseMs: nowMs - this.activeSinceMs,
+    })
     this.state = resolution.state
     this.scoreText.setText(`PUNTEN  ${this.state.score}`)
     this.moveProgressBar(activeSide)
 
     if (resolution.outcome === 'wrong' || resolution.outcome === 'game-over') {
+      this.comboText.setText(previousMultiplier > 1 ? 'COMBO KWIJT' : '')
       this.showFeedback(color ? 'MIS  −1' : 'HOUD EERST EEN KLEUR VAST', '#fda4af')
       this.cameras.main.shake(55, 0.004)
 
@@ -182,6 +198,9 @@ export class GameScene extends Phaser.Scene {
 
     this.updateAffinityLights()
     this.pulseAffinity(activeSide, activeView.block.color)
+    this.updateComboDisplay()
+    this.playHitEffect(activeView.view, activeView.block.color, resolution.quality!, resolution.scoreDelta)
+    this.activeSinceMs = nowMs
 
     this.tweens.add({
       targets: activeView.view,
@@ -193,11 +212,11 @@ export class GameScene extends Phaser.Scene {
 
     if (resolution.outcome === 'stage-win') {
       this.inputIsLocked = true
-      this.showFeedback('MIDDEN BEREIKT', '#fde68a')
-      this.time.delayedCall(260, () => this.showStageWin())
+      this.showFeedback(`MIDDEN BEREIKT  +${resolution.scoreDelta}`, '#fde68a')
+      this.time.delayedCall(260, () => this.showStageWin(resolution.timeBonus))
     } else if (resolution.outcome === 'path-complete') {
       this.inputIsLocked = true
-      this.showFeedback(`PAD KLAAR  +${gameConfig.pointsPerCompletedPath}`, '#fde68a')
+      this.showFeedback(`PAD KLAAR  +${resolution.scoreDelta}`, '#fde68a')
       this.time.delayedCall(160, () => {
         if (this.state.status === 'playing') {
           this.renderPath()
@@ -205,25 +224,27 @@ export class GameScene extends Phaser.Scene {
         }
       })
     } else {
-      this.showFeedback(`+${gameConfig.pointsPerBlock}`, '#86efac')
+      this.showHitFeedback(resolution.quality!, resolution.scoreDelta)
       this.markActiveBlock()
     }
   }
 
-  private showStageWin() {
+  private showStageWin(timeBonus: number) {
     const shade = this.add.rectangle(400, 250, 800, 500, 0x070b14, 0.88)
     const title = this.addText(400, 185, `LEVEL ${this.state.level} KLAAR`, 40, '#fde68a').setOrigin(0.5)
     const score = this.addText(400, 255, `${this.state.score} punten`, 28, '#f8fafc').setOrigin(0.5)
-    const next = this.addText(400, 320, 'VOLGENDE LEVEL', 18, '#86efac').setOrigin(0.5)
-    this.overlay = this.add.container(0, 0, [shade, title, score, next]).setDepth(30)
+    const bonus = this.addText(400, 305, `Tijdbonus  +${timeBonus}`, 18, '#67e8f9').setOrigin(0.5)
+    const next = this.addText(400, 350, 'VOLGENDE LEVEL', 18, '#86efac').setOrigin(0.5)
+    this.overlay = this.add.container(0, 0, [shade, title, score, bonus, next]).setDepth(30)
 
     this.time.delayedCall(950, () => {
       this.overlay?.destroy(true)
       this.overlay = undefined
-      this.state = startNextLevel(this.state)
+      this.state = startNextLevel(this.state, Math.random, this.time.now)
       this.levelText.setText(`LEVEL  ${this.state.level}`)
       this.syncProgressBars(260)
       this.updateAffinityLights()
+      this.comboText.setText('')
       this.renderPath()
       this.time.delayedCall(280, () => {
         this.inputIsLocked = false
@@ -289,6 +310,79 @@ export class GameScene extends Phaser.Scene {
       yoyo: true,
       onComplete: () => this.updateAffinityLights(),
     })
+  }
+
+  private updateComboDisplay() {
+    const { streak, multiplier } = this.state.combo
+    const label = multiplier > 1 ? `×${multiplier}  ·  ${streak} HITS` : streak > 1 ? `${streak} HITS` : ''
+    const colors = ['#f8fafc', '#86efac', '#67e8f9', '#c4b5fd', '#fde68a']
+    this.comboText.setText(label).setColor(colors[multiplier - 1] ?? '#fde68a')
+    this.comboText.setScale(1.35)
+    this.tweens.add({ targets: this.comboText, scale: 1, duration: 120, ease: 'Back.Out' })
+  }
+
+  private showHitFeedback(quality: HitQuality, scoreDelta: number) {
+    const labels: Record<HitQuality, string> = {
+      steady: 'STEADY',
+      good: 'GOOD',
+      great: 'GREAT',
+      perfect: 'PERFECT',
+    }
+    const colors: Record<HitQuality, string> = {
+      steady: '#cbd5e1',
+      good: '#86efac',
+      great: '#67e8f9',
+      perfect: '#fde68a',
+    }
+    this.showFeedback(`${labels[quality]}  ×${this.state.combo.multiplier}  +${scoreDelta}`, colors[quality])
+  }
+
+  private playHitEffect(
+    view: Phaser.GameObjects.Container,
+    color: BlockColor,
+    quality: HitQuality,
+    scoreDelta: number,
+  ) {
+    const multiplier = this.state.combo.multiplier
+    const fill = color === 'red' ? 0xff2d55 : 0x1687ff
+    const burstCount = Math.min(16, 3 + multiplier * 2 + (quality === 'perfect' ? 3 : 0))
+
+    for (let index = 0; index < burstCount; index += 1) {
+      const angle = (Math.PI * 2 * index) / burstCount + Math.random() * 0.35
+      const distance = 22 + Math.random() * (18 + multiplier * 5)
+      const spark = this.add.circle(view.x, view.y, 1.5 + Math.random() * 2, fill, 0.9).setDepth(13)
+      this.tweens.add({
+        targets: spark,
+        x: view.x + Math.cos(angle) * distance,
+        y: view.y + Math.sin(angle) * distance,
+        alpha: 0,
+        scale: 0.25,
+        duration: 180 + multiplier * 35,
+        onComplete: () => spark.destroy(),
+      })
+    }
+
+    if (multiplier >= 2 || quality === 'perfect') {
+      this.effectWash.setFillStyle(fill).setAlpha(0.025 + multiplier * 0.012)
+      this.tweens.killTweensOf(this.effectWash)
+      this.tweens.add({ targets: this.effectWash, alpha: 0, duration: 150 + multiplier * 25 })
+    }
+
+    if (multiplier >= 3) {
+      const activeBar = this.progressBars[this.state.path.targetSide]
+      activeBar.setScale(1.08, 1.03)
+      this.tweens.add({ targets: activeBar, scaleX: 1, scaleY: 1, duration: 130, ease: 'Back.Out' })
+    }
+
+    if (multiplier >= 4) {
+      this.cameras.main.zoomTo(1.012 + multiplier * 0.002, 60, 'Sine.Out', false, (_camera, progress) => {
+        if (progress === 1) this.cameras.main.zoomTo(1, 110, 'Sine.In')
+      })
+    }
+
+    if (multiplier === 5 && scoreDelta > 0) {
+      this.comboText.setText(`OVERDRIVE ×5  ·  ${this.state.combo.streak} HITS`)
+    }
   }
 
   private markActiveBlock() {
