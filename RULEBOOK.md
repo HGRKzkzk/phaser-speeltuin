@@ -4,20 +4,31 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 
 ## Begrippen
 
-- **Ronde:** één speelsessie van 17 seconden.
+- **Spel:** de volledige poging van level 1 tot game over.
+- **Level:** een speelveld tussen een nieuwe beginstand van de buitenbalken en een stage win.
 - **Pad:** de zeven blokken tussen het midden en één schermrand.
 - **Blok:** één onafhankelijke combinatie van een kleur en een richting.
 - **Actief blok:** het enige blok waarop invoer op dat moment betrekking heeft.
 - **Richtingsfase:** drie opeenvolgende paden met dezelfde horizontale richting.
+- **Voortgangsbalk:** de gloeiende balk aan iedere buitenzijde van het speelveld.
 
 ## Kernlus
 
-1. Een ronde begint met nul punten en een nieuw pad.
+1. Een spel begint in level 1 met nul punten en twee balken op hun beginpositie.
 2. De speler houdt de kleur van het actieve blok vast: rood of blauw.
 3. Tegelijk drukt de speler de richting van dat blok in.
-4. Een juiste combinatie verwijdert het blok en activeert het volgende blok richting de rand.
-5. Na het laatste blok is de rand bereikt en begint onmiddellijk een nieuw pad.
-6. Na 17 seconden eindigt de ronde en verschijnt de score.
+4. Een juiste combinatie verwijdert het blok, geeft een punt en beweegt de balk aan de actieve zijde naar het midden.
+5. Een verkeerde combinatie kost een punt en beweegt diezelfde balk naar de buitenrand.
+6. Na het laatste blok begint een nieuw pad.
+
+## Balken, stage win en game over
+
+- De linker- en rechterbalk bewaren onafhankelijk hun positie binnen het level.
+- Alleen de balk aan de zijde van het huidige pad beweegt.
+- Wanneer een balk de middenbalk raakt, is het level gewonnen.
+- Bij een stage win blijft de totaalscore bewaard en begint het volgende level met beide balken op hun beginpositie.
+- Wanneer een balk de buitenrand raakt, is het game over.
+- Een volledig nieuw spel begint opnieuw in level 1 met nul punten.
 
 ## Kleuren en richtingen
 
@@ -35,23 +46,19 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - Pad voltooid: 3 bonuspunten.
 - Verkeerde combinatie: 1 punt eraf.
 - Een score kan nooit lager worden dan nul.
-
-## Einde en herstart
-
-- Na 17 seconden wordt geen nieuwe invoer meer verwerkt.
-- Het eindscherm toont de score en de lokaal bewaarde beste score.
-- De speler kan direct een nieuwe ronde starten.
+- Alleen een juist blok verplaatst een balk naar binnen; de padbonus veroorzaakt geen extra balkstappen.
 
 ## Invarianten
 
 Deze regels mogen niet bij toeval veranderen tijdens visueel of technisch onderhoud:
 
-- Er is precies één actief blok.
+- Er is precies één actief blok tijdens het spelen.
 - Alleen een gelijktijdig juiste kleur én richting speelt een blok weg.
-- Een horizontale richting wijst altijd naar de doelrand.
+- Een horizontale richting wijst altijd naar de actieve zijde.
 - Binnen één pad verandert de richtingsset niet.
-- Een nieuwe ronde begint altijd met nul punten en nul voltooide paden.
+- Score en balkposities worden door de regelkern bepaald, niet door animaties.
+- Een volgend level bewaart de score; een nieuw spel wist de score.
 
 ## Afstelbare waarden
 
-Getallen zoals rondeduur, padlengte, fasegrootte en punten staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.
+Getallen zoals padlengte, fasegrootte, punten en het aantal balkstappen tot winst of verlies staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.
