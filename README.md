@@ -53,11 +53,23 @@ npm run dev
 
 ## Waar begin je met rommelen?
 
-- `src/scenes/GameScene.ts`: het speelveld en de beweging.
+- `RULEBOOK.md`: de betekenis en vaste regels van het spel.
+- `src/game/config.ts`: alle afstelbare getallen.
+- `src/game/rules.ts`: de spelregels zonder Phaser of weergavecode.
+- `src/game/types.ts`: de gedeelde begrippen als TypeScript-types.
+- `src/scenes/GameScene.ts`: toetsen, tijd, animaties en weergave.
 - `src/main.ts`: de algemene Phaser-instellingen.
 - `src/style.css`: de pagina rondom het spel.
 
-Pas bijvoorbeeld in `GameScene.ts` de rondetijd, kleuren, score of het aantal blokken aan.
+Pas tempo, score of padlengte aan in `config.ts`. Pas een fundamentele spelregel eerst aan in `RULEBOOK.md` en daarna in `rules.ts`.
+
+## Tests
+
+```bash
+npm test
+```
+
+De tests bewaken de puntentelling, de onafhankelijkheid van kleur en richting en het wisselen van de richtingsfase.
 
 ## Productiebuild controleren
 
