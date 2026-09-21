@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 
 type BlockColor = 'red' | 'blue'
-type BlockDirection = 'up' | 'right'
+type BlockDirection = 'up' | 'left' | 'right'
 type TargetSide = 'left' | 'right'
 
 type Block = {
@@ -12,6 +12,7 @@ type Block = {
 
 const ROUND_SECONDS = 17
 const BLOCKS_PER_WAVE = 7
+const DIRECTION_SWITCH_EVERY = 3
 const COLOR_KEYS: Record<BlockColor, string> = {
   red: 'A',
   blue: 'D',
@@ -21,6 +22,7 @@ export class GameScene extends Phaser.Scene {
   private blocks: Block[] = []
   private targetSide: TargetSide = 'left'
   private activeIndex = 0
+  private completedWaves = 0
   private score = 0
   private timeLeft = ROUND_SECONDS
   private roundIsOver = false
@@ -28,6 +30,7 @@ export class GameScene extends Phaser.Scene {
   private redKey!: Phaser.Input.Keyboard.Key
   private blueKey!: Phaser.Input.Keyboard.Key
   private upKey!: Phaser.Input.Keyboard.Key
+  private leftKey!: Phaser.Input.Keyboard.Key
   private rightKey!: Phaser.Input.Keyboard.Key
   private spaceKey!: Phaser.Input.Keyboard.Key
 
@@ -37,6 +40,7 @@ export class GameScene extends Phaser.Scene {
   private feedbackText!: Phaser.GameObjects.Text
   private hintText!: Phaser.GameObjects.Text
   private overlay!: Phaser.GameObjects.Container
+  private colorWash!: Phaser.GameObjects.Rectangle
   private roundTimer?: Phaser.Time.TimerEvent
 
   constructor() {
@@ -50,16 +54,18 @@ export class GameScene extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor('#0b1020')
     this.drawArena()
+    this.colorWash = this.add.rectangle(400, 250, 800, 500, 0xffffff, 0).setDepth(10)
 
     this.scoreText = this.addText(24, 22, 'PUNTEN  0', 22).setOrigin(0)
     this.timerText = this.addText(776, 22, '17.0', 28).setOrigin(1, 0)
     this.sideText = this.addText(400, 88, '', 22).setOrigin(0.5)
     this.feedbackText = this.addText(400, 400, '', 22).setOrigin(0.5)
-    this.hintText = this.addText(400, 464, 'Houd A = ROOD of D = BLAUW vast · druk daarna ↑ of →', 17, '#94a3b8').setOrigin(0.5)
+    this.hintText = this.addText(400, 464, 'Houd A = ROOD of D = BLAUW vast · druk daarna de pijl', 17, '#94a3b8').setOrigin(0.5)
 
     this.redKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A)
     this.blueKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)
     this.upKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP)
+    this.leftKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT)
     this.rightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT)
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
 
@@ -78,6 +84,8 @@ export class GameScene extends Phaser.Scene {
 
     if (Phaser.Input.Keyboard.JustDown(this.upKey)) {
       this.tryBlock('up')
+    } else if (Phaser.Input.Keyboard.JustDown(this.leftKey)) {
+      this.tryBlock('left')
     } else if (Phaser.Input.Keyboard.JustDown(this.rightKey)) {
       this.tryBlock('right')
     }
@@ -89,11 +97,13 @@ export class GameScene extends Phaser.Scene {
     this.roundTimer?.remove()
 
     this.score = 0
+    this.completedWaves = 0
     this.timeLeft = ROUND_SECONDS
     this.roundIsOver = false
     this.scoreText.setText('PUNTEN  0')
     this.timerText.setText(ROUND_SECONDS.toFixed(1)).setColor('#f8fafc')
     this.feedbackText.setText('')
+    this.colorWash.setAlpha(0)
     this.hintText.setVisible(true)
     this.createWave()
 
@@ -118,14 +128,16 @@ export class GameScene extends Phaser.Scene {
   private createWave() {
     this.clearBlocks()
     this.activeIndex = 0
-    this.targetSide = Math.random() < 0.5 ? 'left' : 'right'
+    const directionPhase = Math.floor(this.completedWaves / DIRECTION_SWITCH_EVERY)
+    this.targetSide = directionPhase % 2 === 0 ? 'right' : 'left'
 
-    const pointsToEdge = this.targetSide === 'left' ? '← LINKERRAND' : 'RECHTERRAND →'
-    this.sideText.setText(pointsToEdge)
+    const horizontalArrow = this.targetSide === 'left' ? '←' : '→'
+    const phaseRound = (this.completedWaves % DIRECTION_SWITCH_EVERY) + 1
+    this.sideText.setText(`${horizontalArrow} + ↑  ·  REEKS ${phaseRound}/${DIRECTION_SWITCH_EVERY}`)
 
     for (let index = 0; index < BLOCKS_PER_WAVE; index += 1) {
       const color: BlockColor = Math.random() < 0.5 ? 'red' : 'blue'
-      const direction: BlockDirection = Math.random() < 0.5 ? 'up' : 'right'
+      const direction: BlockDirection = Math.random() < 0.5 ? 'up' : this.targetSide
       const step = index * 50
       const x = this.targetSide === 'left' ? 350 - step : 450 + step
       const view = this.createBlockView(x, 250, color, direction)
@@ -139,7 +151,8 @@ export class GameScene extends Phaser.Scene {
   private createBlockView(x: number, y: number, color: BlockColor, direction: BlockDirection) {
     const fill = color === 'red' ? 0xff2d55 : 0x1687ff
     const rectangle = this.add.rectangle(0, 0, 42, 64, fill).setStrokeStyle(3, 0xffffff, 0.22)
-    const arrow = this.addText(0, 0, direction === 'up' ? '↑' : '→', 31).setOrigin(0.5)
+    const arrowSymbol = direction === 'up' ? '↑' : direction === 'left' ? '←' : '→'
+    const arrow = this.addText(0, 0, arrowSymbol, 31).setOrigin(0.5)
     const key = this.addText(0, 23, COLOR_KEYS[color], 11, '#ffffff').setOrigin(0.5).setAlpha(0.8)
 
     return this.add.container(x, y, [rectangle, arrow, key])
@@ -173,6 +186,7 @@ export class GameScene extends Phaser.Scene {
       this.activeIndex += 1
 
       if (this.activeIndex === this.blocks.length) {
+        this.completedWaves += 1
         this.score += 3
         this.scoreText.setText(`PUNTEN  ${this.score}`)
         this.showFeedback('RAND BEREIKT  +3', '#fde68a')
@@ -211,6 +225,14 @@ export class GameScene extends Phaser.Scene {
     const outline = block.view.first as Phaser.GameObjects.Rectangle
     const outlineColor = heldColor === 'red' ? 0xff2d55 : heldColor === 'blue' ? 0x1687ff : 0xffffff
     outline.setStrokeStyle(heldColor === block.color ? 6 : 3, outlineColor, heldColor ? 1 : 0.22)
+
+    if (heldColor === 'red') {
+      this.colorWash.setFillStyle(0xff2d55).setAlpha(0.1)
+    } else if (heldColor === 'blue') {
+      this.colorWash.setFillStyle(0x1687ff).setAlpha(0.1)
+    } else {
+      this.colorWash.setAlpha(0)
+    }
   }
 
   private showFeedback(message: string, color: string) {
@@ -224,6 +246,7 @@ export class GameScene extends Phaser.Scene {
 
     this.roundIsOver = true
     this.roundTimer?.remove()
+    this.colorWash.setAlpha(0)
     this.timerText.setText('0.0')
     this.hintText.setVisible(false)
 
@@ -237,7 +260,7 @@ export class GameScene extends Phaser.Scene {
     const bestScore = this.addText(400, 282, `Beste: ${best}`, 20, '#94a3b8').setOrigin(0.5)
     const restart = this.addText(400, 350, 'Druk op SPATIE voor nog 17 seconden', 20, '#86efac').setOrigin(0.5)
 
-    this.overlay = this.add.container(0, 0, [shade, title, finalScore, bestScore, restart])
+    this.overlay = this.add.container(0, 0, [shade, title, finalScore, bestScore, restart]).setDepth(30)
   }
 
   private clearBlocks() {
@@ -249,8 +272,8 @@ export class GameScene extends Phaser.Scene {
     this.add.rectangle(400, 250, 760, 150, 0x111a2e).setStrokeStyle(2, 0x334155)
     this.add.rectangle(400, 250, 8, 190, 0xf8fafc, 0.85)
     this.addText(400, 362, 'START', 13, '#64748b').setOrigin(0.5)
-    this.add.rectangle(22, 250, 8, 190, 0xff2d55, 0.8)
-    this.add.rectangle(778, 250, 8, 190, 0x1687ff, 0.8)
+    this.add.rectangle(22, 250, 8, 190, 0xf8fafc, 0.35)
+    this.add.rectangle(778, 250, 8, 190, 0xf8fafc, 0.35)
   }
 
   private addText(x: number, y: number, text: string, size: number, color = '#f8fafc') {
