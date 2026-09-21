@@ -4,9 +4,11 @@ import {
   classifyHitQuality,
   createGameState,
   createPath,
+  getTimePressure,
   getMultiplier,
   getTargetSide,
   resolveAttempt,
+  resolveTimePressure,
   startNextLevel,
 } from './rules'
 import { createSeededRandom } from './random'
@@ -163,5 +165,19 @@ describe('tijd, kwaliteit en combo', () => {
     expect(result.outcome).toBe('stage-win')
     expect(result.timeBonus).toBe(13)
     expect(result.scoreDelta).toBeGreaterThan(result.timeBonus)
+  })
+
+  it('laat de tijdsdruk lineair van buitenrand naar midden lopen', () => {
+    const state = createGameState(createSeededRandom(17), 1_000)
+    expect(getTimePressure(state, 1_000)).toBe(0)
+    expect(getTimePressure(state, 1_000 + gameConfig.levelTimeLimitMs / 2)).toBe(0.5)
+    expect(getTimePressure(state, 1_000 + gameConfig.levelTimeLimitMs)).toBe(1)
+  })
+
+  it('geeft game over wanneer de rode tijdslijn het midden bereikt', () => {
+    const state = createGameState(createSeededRandom(17), 1_000)
+    const result = resolveTimePressure(state, 1_000 + gameConfig.levelTimeLimitMs)
+    expect(result.outcome).toBe('game-over')
+    expect(result.state.status).toBe('game-over')
   })
 })

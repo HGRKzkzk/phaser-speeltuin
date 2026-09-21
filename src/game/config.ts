@@ -7,7 +7,7 @@ export const gameConfig = {
   mistakesFromStartToGameOver: 6,
   barMovementPixels: 12,
   comboWindowMs: 900,
-  levelParTimeMs: 18_000,
+  levelTimeLimitMs: 18_000,
   qualityThresholdsMs: {
     perfect: 280,
     great: 500,

@@ -10,6 +10,7 @@ import type {
   PathState,
   PlayerAttempt,
   TargetSide,
+  TimePressureResolution,
 } from './types'
 import type { RandomSource } from './random'
 
@@ -28,6 +29,22 @@ export function classifyHitQuality(responseMs: number): HitQuality {
 
 export function getMultiplier(streak: number) {
   return gameConfig.multiplierThresholds.find((step) => streak >= step.streak)?.multiplier ?? 1
+}
+
+export function getTimePressure(state: GameState, nowMs: number) {
+  const elapsedMs = Math.max(0, nowMs - state.levelStartedAtMs)
+  return Math.min(1, elapsedMs / gameConfig.levelTimeLimitMs)
+}
+
+export function resolveTimePressure(state: GameState, nowMs: number): TimePressureResolution {
+  const progress = getTimePressure(state, nowMs)
+  const gameOver = state.status === 'playing' && progress >= 1
+
+  return {
+    progress,
+    outcome: gameOver ? 'game-over' : 'running',
+    state: gameOver ? { ...state, status: 'game-over' } : state,
+  }
 }
 
 export function createEmptyAffinity(): AffinityMatrix {
@@ -145,7 +162,7 @@ export function resolveAttempt(
   const pathBonus = pathIsComplete ? gameConfig.pointsPerCompletedPath : 0
   const elapsedMs = attempt.atMs - state.levelStartedAtMs
   const timeBonus = progress >= gameConfig.progressForStageWin
-    ? Math.max(0, Math.ceil((gameConfig.levelParTimeMs - elapsedMs) / 1000))
+    ? Math.max(0, Math.ceil((gameConfig.levelTimeLimitMs - elapsedMs) / 1000))
     : 0
   const scoreDelta = hitPoints + pathBonus + timeBonus
   const score = state.score + scoreDelta

@@ -1,11 +1,18 @@
 import Phaser from 'phaser'
 import { gameConfig } from '../game/config'
-import { createGameState, resolveAttempt, startNextLevel } from '../game/rules'
+import { createGameState, resolveAttempt, resolveTimePressure, startNextLevel } from '../game/rules'
 import type { BlockColor, BlockDirection, GameBlock, GameState, HitQuality, TargetSide } from '../game/types'
 
 type BlockView = {
   block: GameBlock
   view: Phaser.GameObjects.Container
+}
+
+type ProgressBarView = {
+  container: Phaser.GameObjects.Container
+  glow: Phaser.GameObjects.Rectangle
+  halo: Phaser.GameObjects.Rectangle
+  core: Phaser.GameObjects.Rectangle
 }
 
 const COLOR_KEYS: Record<BlockColor, string> = { red: 'A', blue: 'D' }
@@ -33,7 +40,7 @@ export class GameScene extends Phaser.Scene {
   private overlay?: Phaser.GameObjects.Container
   private colorWash!: Phaser.GameObjects.Rectangle
   private effectWash!: Phaser.GameObjects.Rectangle
-  private progressBars!: Record<TargetSide, Phaser.GameObjects.Container>
+  private progressBars!: Record<TargetSide, ProgressBarView>
   private affinityLights!: Record<TargetSide, Record<BlockColor, Phaser.GameObjects.Arc>>
 
   constructor() {
@@ -87,6 +94,8 @@ export class GameScene extends Phaser.Scene {
       return
     }
 
+    if (this.state.status === 'playing' && this.updateTimePressure()) return
+
     const heldColor = this.getHeldColor()
     this.updateColorWash(heldColor)
 
@@ -114,6 +123,7 @@ export class GameScene extends Phaser.Scene {
     this.colorWash.setAlpha(0)
     this.effectWash.setAlpha(0)
     this.syncProgressBars()
+    this.styleProgressBars()
     this.updateAffinityLights()
     this.renderPath()
   }
@@ -148,7 +158,7 @@ export class GameScene extends Phaser.Scene {
     const glow = this.add.rectangle(0, 0, 24, 198, 0xe2e8f0, 0.12)
     const halo = this.add.rectangle(0, 0, 14, 194, 0xf8fafc, 0.28)
     const core = this.add.rectangle(0, 0, 7, 190, 0xffffff, 0.96)
-    const bar = this.add.container(BAR_START_X[side], 250, [glow, halo, core]).setDepth(5)
+    const container = this.add.container(BAR_START_X[side], 250, [glow, halo, core]).setDepth(5)
 
     this.tweens.add({
       targets: [glow, halo],
@@ -159,7 +169,7 @@ export class GameScene extends Phaser.Scene {
       ease: 'Sine.InOut',
     })
 
-    return bar
+    return { container, glow, halo, core }
   }
 
   private createAffinityLight(x: number, y: number, color: BlockColor) {
@@ -191,7 +201,7 @@ export class GameScene extends Phaser.Scene {
 
       if (resolution.outcome === 'game-over') {
         this.inputIsLocked = true
-        this.time.delayedCall(220, () => this.showGameOver())
+        this.time.delayedCall(220, () => this.showGameOver('BUITENRAND BEREIKT'))
       }
       return
     }
@@ -242,6 +252,7 @@ export class GameScene extends Phaser.Scene {
       this.overlay = undefined
       this.state = startNextLevel(this.state, Math.random, this.time.now)
       this.levelText.setText(`LEVEL  ${this.state.level}`)
+      this.styleProgressBars()
       this.syncProgressBars(260)
       this.updateAffinityLights()
       this.comboText.setText('')
@@ -252,36 +263,72 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
-  private showGameOver() {
+  private showGameOver(reason: string) {
     const storedBest = Number(localStorage.getItem('phaser-speeltuin-best') ?? 0)
     const best = Math.max(storedBest, this.state.score)
     localStorage.setItem('phaser-speeltuin-best', String(best))
     this.colorWash.setAlpha(0)
 
     const shade = this.add.rectangle(400, 250, 800, 500, 0x070b14, 0.94)
-    const title = this.addText(400, 145, 'GAME OVER', 48, '#fb7185').setOrigin(0.5)
-    const level = this.addText(400, 215, `Level ${this.state.level}`, 22, '#cbd5e1').setOrigin(0.5)
-    const finalScore = this.addText(400, 260, `${this.state.score} punten`, 32, '#fde68a').setOrigin(0.5)
-    const bestScore = this.addText(400, 305, `Beste: ${best}`, 18, '#94a3b8').setOrigin(0.5)
-    const restart = this.addText(400, 365, 'Druk op SPATIE om opnieuw te beginnen', 19, '#86efac').setOrigin(0.5)
-    this.overlay = this.add.container(0, 0, [shade, title, level, finalScore, bestScore, restart]).setDepth(30)
+    const title = this.addText(400, 125, 'GAME OVER', 48, '#fb7185').setOrigin(0.5)
+    const cause = this.addText(400, 180, reason, 16, '#fda4af').setOrigin(0.5)
+    const level = this.addText(400, 225, `Level ${this.state.level}`, 22, '#cbd5e1').setOrigin(0.5)
+    const finalScore = this.addText(400, 270, `${this.state.score} punten`, 32, '#fde68a').setOrigin(0.5)
+    const bestScore = this.addText(400, 315, `Beste: ${best}`, 18, '#94a3b8').setOrigin(0.5)
+    const restart = this.addText(400, 375, 'Druk op SPATIE om opnieuw te beginnen', 19, '#86efac').setOrigin(0.5)
+    this.overlay = this.add.container(0, 0, [shade, title, cause, level, finalScore, bestScore, restart]).setDepth(30)
   }
 
   private moveProgressBar(side: TargetSide) {
     const x = this.getBarX(side)
-    this.tweens.killTweensOf(this.progressBars[side])
-    this.tweens.add({ targets: this.progressBars[side], x, duration: 150, ease: 'Back.Out' })
+    this.tweens.killTweensOf(this.progressBars[side].container)
+    this.tweens.add({ targets: this.progressBars[side].container, x, duration: 150, ease: 'Back.Out' })
   }
 
   private syncProgressBars(duration = 0) {
     ;(['left', 'right'] as TargetSide[]).forEach((side) => {
-      this.tweens.killTweensOf(this.progressBars[side])
+      const container = this.progressBars[side].container
+      this.tweens.killTweensOf(container)
       if (duration === 0) {
-        this.progressBars[side].setX(this.getBarX(side))
+        container.setX(this.getBarX(side))
       } else {
-        this.tweens.add({ targets: this.progressBars[side], x: this.getBarX(side), duration, ease: 'Sine.Out' })
+        this.tweens.add({ targets: container, x: this.getBarX(side), duration, ease: 'Sine.Out' })
       }
     })
+  }
+
+  private styleProgressBars() {
+    const activeSide = this.state.path.targetSide
+    ;(['left', 'right'] as TargetSide[]).forEach((side) => {
+      const bar = this.progressBars[side]
+      const isDanger = side !== activeSide
+      bar.glow.setFillStyle(isDanger ? 0xff1744 : 0xe2e8f0)
+      bar.halo.setFillStyle(isDanger ? 0xff2d55 : 0xf8fafc)
+      bar.core.setFillStyle(isDanger ? 0xff5c76 : 0xffffff)
+    })
+  }
+
+  private updateTimePressure() {
+    const resolution = resolveTimePressure(this.state, this.time.now)
+    const dangerSide: TargetSide = this.state.path.targetSide === 'left' ? 'right' : 'left'
+    const centerX = dangerSide === 'left' ? 392 : 408
+    this.progressBars[dangerSide].container.setX(
+      Phaser.Math.Linear(BAR_START_X[dangerSide], centerX, resolution.progress),
+    )
+
+    if (resolution.outcome === 'game-over') {
+      this.state = resolution.state
+      this.inputIsLocked = true
+      this.colorWash.setAlpha(0)
+      this.comboText.setText('DE TIJD HAALT JE IN')
+      this.cameras.main.shake(180, 0.008)
+      this.effectWash.setFillStyle(0xff1744).setAlpha(0.18)
+      this.tweens.add({ targets: this.effectWash, alpha: 0, duration: 260 })
+      this.time.delayedCall(260, () => this.showGameOver('RODE LIJN BEREIKTE HET MIDDEN'))
+      return true
+    }
+
+    return false
   }
 
   private getBarX(side: TargetSide) {
@@ -369,7 +416,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (multiplier >= 3) {
-      const activeBar = this.progressBars[this.state.path.targetSide]
+      const activeBar = this.progressBars[this.state.path.targetSide].container
       activeBar.setScale(1.08, 1.03)
       this.tweens.add({ targets: activeBar, scaleX: 1, scaleY: 1, duration: 130, ease: 'Back.Out' })
     }

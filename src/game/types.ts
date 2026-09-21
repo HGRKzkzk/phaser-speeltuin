@@ -56,3 +56,9 @@ export type AttemptResolution = {
   scoreDelta: number
   timeBonus: number
 }
+
+export type TimePressureResolution = {
+  state: GameState
+  progress: number
+  outcome: 'running' | 'game-over'
+}
