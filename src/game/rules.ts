@@ -1,4 +1,5 @@
 import { gameConfig } from './config'
+import { pickAdventureScenario } from './adventures'
 import type {
   AffinityMatrix,
   AttemptResolution,
@@ -58,6 +59,11 @@ function recordCorrect(affinity: AffinityMatrix, side: TargetSide, color: BlockC
   return next
 }
 
+function pickAdventureGap(random: RandomSource): number {
+  const choices = gameConfig.adventureLevelGapChoices
+  return choices[Math.floor(random() * choices.length)]
+}
+
 export function createGameState(random: RandomSource = Math.random): GameState {
   const path = createPath(1, random)
   return {
@@ -68,6 +74,9 @@ export function createGameState(random: RandomSource = Math.random): GameState {
     edgeProgress: { left: 0, right: 0 },
     affinity: recordShown(createEmptyAffinity(), path),
     path,
+    levelsUntilAdventure: pickAdventureGap(random),
+    adventure: null,
+    adventureLog: [],
   }
 }
 
@@ -82,7 +91,45 @@ export function startNextLevel(state: GameState, random: RandomSource = Math.ran
     edgeProgress: { left: 0, right: 0 },
     affinity: recordShown(state.affinity, path),
     path,
+    levelsUntilAdventure: state.levelsUntilAdventure,
+    adventure: null,
+    adventureLog: state.adventureLog,
   }
+}
+
+export function isAdventureDue(state: GameState): boolean {
+  return state.levelsUntilAdventure <= 0
+}
+
+export function enterAdventure(state: GameState, random: RandomSource = Math.random): GameState {
+  return {
+    ...state,
+    status: 'adventure',
+    adventure: { scenario: pickAdventureScenario(random) },
+    levelsUntilAdventure: pickAdventureGap(random),
+  }
+}
+
+export function chooseAdventureOption(
+  state: GameState,
+  choiceIndex: number,
+  random: RandomSource = Math.random,
+): GameState {
+  if (state.status !== 'adventure' || !state.adventure) {
+    throw new Error('Een keuze is alleen toegestaan tijdens een tekstavontuur.')
+  }
+
+  const choice = state.adventure.scenario.choices[choiceIndex]
+  if (!choice) {
+    throw new Error('Ongeldige keuze-index.')
+  }
+
+  const adventureLog = [
+    ...state.adventureLog,
+    { scenarioId: state.adventure.scenario.id, choiceId: choice.id },
+  ]
+
+  return startNextLevel({ ...state, adventure: null, adventureLog }, random)
 }
 
 export function resolveAttempt(
@@ -130,6 +177,7 @@ export function resolveAttempt(
         completedPaths,
         edgeProgress: { ...state.edgeProgress, [activeSide]: progress },
         affinity,
+        levelsUntilAdventure: Math.max(0, state.levelsUntilAdventure - 1),
       },
     }
   }

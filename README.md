@@ -19,6 +19,8 @@ Een goed blok beweegt de gloeiende balk aan de actieve zijde naar het midden. Ee
 
 Rood en blauw bepalen alleen de kleur, niet de speelrichting. Bij het vasthouden van `A` of `D` krijgt het hele speelveld een subtiele gloed in de gekozen kleur. Vier kleine lichtpunten bouwen vanaf het begin mee met correct gespeelde blokken voor rood/blauw × links/rechts. Deze affiniteit blijft tussen levels bewaard, maar heeft nog geen spelmechanisch gevolg.
 
+Na willekeurig 2, 3 of 4 levels wacht een kort tekstavontuur voordat het volgende level begint. Houd `Shift` vast om de kleinere, lager geplaatste keuzewijzer heen en weer te laten bewegen tussen de keuzes; laat los om hem stil te zetten. Druk op de spatiebalk om de keuze te bevestigen waar de wijzer op dat moment op staat. De keuze wordt vastgelegd maar heeft nog geen ander spelmechanisch gevolg; score en level blijven ongewijzigd door de keuze zelf.
+
 ## Op je Chromebook installeren
 
 Zet eerst **Linux-ontwikkelomgeving** aan via ChromeOS: **Instellingen → Geavanceerd → Ontwikkelaars → Linux-ontwikkelomgeving**.
@@ -56,6 +58,7 @@ npm run dev
 - `RULEBOOK.md`: de betekenis en vaste regels van het spel.
 - `src/game/config.ts`: alle afstelbare getallen.
 - `src/game/rules.ts`: de spelregels zonder Phaser of weergavecode.
+- `src/game/adventures.ts`: de verhaalfragmenten en keuzes van het tekstavontuur.
 - `src/game/types.ts`: de gedeelde begrippen als TypeScript-types.
 - `src/scenes/GameScene.ts`: toetsen, animaties en weergave.
 - `src/main.ts`: de algemene Phaser-instellingen.
@@ -69,7 +72,7 @@ Pas tempo, score of padlengte aan in `config.ts`. Pas een fundamentele spelregel
 npm test
 ```
 
-De tests bewaken de puntentelling, balkvoortgang, levelovergangen, de gebalanceerde blokkenzak en de latente affiniteit.
+De tests bewaken de puntentelling, balkvoortgang, levelovergangen, de gebalanceerde blokkenzak, de latente affiniteit en het tekstavontuur.
 
 ## Productiebuild controleren
 

@@ -1,16 +1,32 @@
 import Phaser from 'phaser'
 import { gameConfig } from '../game/config'
-import { createGameState, resolveAttempt, startNextLevel } from '../game/rules'
-import type { BlockColor, BlockDirection, GameBlock, GameState, TargetSide } from '../game/types'
+import {
+  chooseAdventureOption,
+  createGameState,
+  enterAdventure,
+  isAdventureDue,
+  resolveAttempt,
+  startNextLevel,
+} from '../game/rules'
+import type { AdventureChoice, BlockColor, BlockDirection, GameBlock, GameState, TargetSide } from '../game/types'
 
 type BlockView = {
   block: GameBlock
   view: Phaser.GameObjects.Container
 }
 
+type AdventureChoiceView = {
+  container: Phaser.GameObjects.Container
+  box: Phaser.GameObjects.Rectangle
+  indicator: Phaser.GameObjects.Text
+}
+
 const COLOR_KEYS: Record<BlockColor, string> = { red: 'A', blue: 'D' }
 const BAR_START_X: Record<TargetSide, number> = { left: 92, right: 708 }
 const CENTER_X = 400
+const ADVENTURE_TRACK_Y = 380
+const ADVENTURE_TRACK_HALF_WIDTH = 220
+const ADVENTURE_TRACK_SPEED = 260
 
 export class GameScene extends Phaser.Scene {
   private state: GameState = createGameState()
@@ -23,6 +39,7 @@ export class GameScene extends Phaser.Scene {
   private leftKey!: Phaser.Input.Keyboard.Key
   private rightKey!: Phaser.Input.Keyboard.Key
   private spaceKey!: Phaser.Input.Keyboard.Key
+  private shiftKey!: Phaser.Input.Keyboard.Key
 
   private scoreText!: Phaser.GameObjects.Text
   private levelText!: Phaser.GameObjects.Text
@@ -32,6 +49,13 @@ export class GameScene extends Phaser.Scene {
   private colorWash!: Phaser.GameObjects.Rectangle
   private progressBars!: Record<TargetSide, Phaser.GameObjects.Container>
   private affinityLights!: Record<TargetSide, Record<BlockColor, Phaser.GameObjects.Arc>>
+
+  private adventureUI?: Phaser.GameObjects.Container
+  private adventureSelector!: Phaser.GameObjects.Container
+  private adventureChoiceViews: AdventureChoiceView[] = []
+  private adventureChoiceXs: number[] = []
+  private adventureSelectorX = CENTER_X
+  private adventureSelectorDirection = 1
 
   constructor() {
     super('game')
@@ -72,13 +96,19 @@ export class GameScene extends Phaser.Scene {
     this.leftKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT)
     this.rightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT)
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
+    this.shiftKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
 
     this.startGame()
   }
 
-  update() {
+  update(_time: number, delta: number) {
     if (this.state.status === 'game-over') {
       if (this.overlay && Phaser.Input.Keyboard.JustDown(this.spaceKey)) this.startGame()
+      return
+    }
+
+    if (this.state.status === 'adventure') {
+      this.updateAdventure(delta)
       return
     }
 
@@ -100,6 +130,7 @@ export class GameScene extends Phaser.Scene {
 
   private startGame() {
     this.overlay?.destroy(true)
+    this.destroyAdventureUI()
     this.state = createGameState()
     this.inputIsLocked = false
     this.scoreText.setText('PUNTEN  0')
@@ -211,24 +242,160 @@ export class GameScene extends Phaser.Scene {
   }
 
   private showStageWin() {
+    const adventureDue = isAdventureDue(this.state)
     const shade = this.add.rectangle(400, 250, 800, 500, 0x070b14, 0.88)
     const title = this.addText(400, 185, `LEVEL ${this.state.level} KLAAR`, 40, '#fde68a').setOrigin(0.5)
     const score = this.addText(400, 255, `${this.state.score} punten`, 28, '#f8fafc').setOrigin(0.5)
-    const next = this.addText(400, 320, 'VOLGENDE LEVEL', 18, '#86efac').setOrigin(0.5)
+    const nextLabel = adventureDue ? 'EEN TEKSTAVONTUUR WACHT' : 'VOLGENDE LEVEL'
+    const next = this.addText(400, 320, nextLabel, 18, '#86efac').setOrigin(0.5)
     this.overlay = this.add.container(0, 0, [shade, title, score, next]).setDepth(30)
 
     this.time.delayedCall(950, () => {
       this.overlay?.destroy(true)
       this.overlay = undefined
-      this.state = startNextLevel(this.state)
-      this.levelText.setText(`LEVEL  ${this.state.level}`)
-      this.syncProgressBars(260)
-      this.updateAffinityLights()
-      this.renderPath()
-      this.time.delayedCall(280, () => {
-        this.inputIsLocked = false
-      })
+
+      if (adventureDue) {
+        this.state = enterAdventure(this.state)
+        this.showAdventure()
+        return
+      }
+
+      this.advanceToNextLevel()
     })
+  }
+
+  private advanceToNextLevel() {
+    this.state = startNextLevel(this.state)
+    this.presentLevel()
+  }
+
+  private presentLevel() {
+    this.levelText.setText(`LEVEL  ${this.state.level}`)
+    this.syncProgressBars(260)
+    this.updateAffinityLights()
+    this.renderPath()
+    this.time.delayedCall(280, () => {
+      this.inputIsLocked = false
+    })
+  }
+
+  private showAdventure() {
+    const adventure = this.state.adventure
+    if (!adventure) return
+
+    const { scenario } = adventure
+    const shade = this.add.rectangle(400, 250, 800, 500, 0x070b14, 0.92)
+    const storyText = this.addText(400, 150, scenario.text, 18, '#e2e8f0')
+      .setOrigin(0.5)
+      .setWordWrapWidth(620, true)
+      .setAlign('center')
+
+    const spacing = 220
+    const startX = CENTER_X - ((scenario.choices.length - 1) * spacing) / 2
+    this.adventureChoiceXs = scenario.choices.map((_, index) => startX + index * spacing)
+    this.adventureChoiceViews = scenario.choices.map((choice, index) =>
+      this.createAdventureChoiceView(this.adventureChoiceXs[index], choice),
+    )
+
+    this.adventureSelectorX = CENTER_X
+    this.adventureSelectorDirection = 1
+    this.adventureSelector = this.createAdventureSelector()
+
+    const hint = this.addText(400, 448, 'Houd SHIFT vast om te bewegen · SPATIE kiest', 15, '#94a3b8').setOrigin(0.5)
+
+    this.adventureUI = this.add
+      .container(0, 0, [
+        shade,
+        storyText,
+        ...this.adventureChoiceViews.map((view) => view.container),
+        this.adventureSelector,
+        hint,
+      ])
+      .setDepth(30)
+
+    this.highlightAdventureChoice(this.getPointedAdventureChoiceIndex())
+  }
+
+  private createAdventureChoiceView(x: number, choice: AdventureChoice): AdventureChoiceView {
+    const box = this.add.rectangle(0, 0, 190, 110, 0x111a2e, 0.9).setStrokeStyle(2, 0x334155)
+    const label = this.addText(0, -32, choice.label, 16, '#f8fafc').setOrigin(0.5).setAlign('center')
+    const description = this.addText(0, 2, choice.description, 13, '#94a3b8')
+      .setOrigin(0.5)
+      .setAlign('center')
+      .setWordWrapWidth(160, true)
+    const indicator = this.addText(0, 40, '', 12, '#86efac').setOrigin(0.5)
+    const container = this.add.container(x, 265, [box, label, description, indicator])
+    return { container, box, indicator }
+  }
+
+  private createAdventureSelector() {
+    const glow = this.add.rectangle(0, 0, 14, 74, 0xe2e8f0, 0.14)
+    const halo = this.add.rectangle(0, 0, 9, 70, 0xf8fafc, 0.3)
+    const core = this.add.rectangle(0, 0, 4, 66, 0xffffff, 0.96)
+    return this.add.container(CENTER_X, ADVENTURE_TRACK_Y, [glow, halo, core]).setDepth(31)
+  }
+
+  private updateAdventure(delta: number) {
+    if (!this.state.adventure) return
+
+    if (this.shiftKey.isDown) {
+      const distance = (ADVENTURE_TRACK_SPEED * delta) / 1000
+      const min = CENTER_X - ADVENTURE_TRACK_HALF_WIDTH
+      const max = CENTER_X + ADVENTURE_TRACK_HALF_WIDTH
+      this.adventureSelectorX += this.adventureSelectorDirection * distance
+
+      if (this.adventureSelectorX >= max) {
+        this.adventureSelectorX = max
+        this.adventureSelectorDirection = -1
+      } else if (this.adventureSelectorX <= min) {
+        this.adventureSelectorX = min
+        this.adventureSelectorDirection = 1
+      }
+
+      this.adventureSelector.setX(this.adventureSelectorX)
+    }
+
+    const pointedIndex = this.getPointedAdventureChoiceIndex()
+    this.highlightAdventureChoice(pointedIndex)
+
+    if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+      this.commitAdventureChoice(pointedIndex)
+    }
+  }
+
+  private getPointedAdventureChoiceIndex(): number {
+    let closest = 0
+    let closestDistance = Infinity
+    this.adventureChoiceXs.forEach((x, index) => {
+      const distance = Math.abs(x - this.adventureSelectorX)
+      if (distance < closestDistance) {
+        closestDistance = distance
+        closest = index
+      }
+    })
+    return closest
+  }
+
+  private highlightAdventureChoice(pointedIndex: number) {
+    this.adventureChoiceViews.forEach((view, index) => {
+      const isPointed = index === pointedIndex
+      view.box.setStrokeStyle(isPointed ? 3 : 2, isPointed ? 0x86efac : 0x334155)
+      view.box.setFillStyle(0x111a2e, isPointed ? 1 : 0.9)
+      view.indicator.setText(isPointed ? 'SPATIE = DEZE KEUZE' : '')
+    })
+  }
+
+  private commitAdventureChoice(choiceIndex: number) {
+    this.state = chooseAdventureOption(this.state, choiceIndex)
+    this.destroyAdventureUI()
+    this.presentLevel()
+  }
+
+  private destroyAdventureUI() {
+    this.adventureUI?.destroy(true)
+    this.adventureUI = undefined
+    this.adventureChoiceViews = []
+    this.adventureChoiceXs = []
   }
 
   private showGameOver() {
