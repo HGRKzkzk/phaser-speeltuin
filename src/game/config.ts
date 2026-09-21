@@ -9,6 +9,7 @@ export const gameConfig = {
   adventureLevelGapChoices: [2, 3, 4],
   comboWindowMs: 900,
   levelTimeLimitMs: 18_000,
+  timeReliefPerCorrectMs: 250,
   qualityThresholdsMs: {
     perfect: 280,
     great: 500,
