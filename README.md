@@ -15,6 +15,8 @@ Speel vanaf het midden zeven willekeurige blokken per pad weg:
 - een voltooid pad levert 3 bonuspunten op;
 - een verkeerde combinatie kost 1 punt, tot een minimum van 0.
 
+Reactietijd geeft iedere goede treffer de kwaliteit `STEADY`, `GOOD`, `GREAT` of `PERFECT`. Snelle opeenvolgende treffers bouwen een multiplier op van ×2 tot ×5. Een fout breekt de combo. Een snelle level-clear levert daarnaast een tijdbonus op. De effecten groeien mee met de multiplier, maar balkvoortgang blijft altijd precies één stap per goed blok.
+
 Een goed blok beweegt de gloeiende balk aan de actieve zijde naar het midden. Een fout beweegt die balk naar de buitenrand. Raakt een balk het midden, dan win je het level, neem je de score mee en wisselt het volgende level van zijde. Raakt een balk de buitenrand, dan is het game over. Met de spatiebalk begin je opnieuw; je beste score wordt lokaal bewaard.
 
 Rood en blauw bepalen alleen de kleur, niet de speelrichting. Bij het vasthouden van `A` of `D` krijgt het hele speelveld een subtiele gloed in de gekozen kleur. Vier kleine lichtpunten bouwen vanaf het begin mee met correct gespeelde blokken voor rood/blauw × links/rechts. Deze affiniteit blijft tussen levels bewaard, maar heeft nog geen spelmechanisch gevolg.
@@ -69,7 +71,7 @@ Pas tempo, score of padlengte aan in `config.ts`. Pas een fundamentele spelregel
 npm test
 ```
 
-De tests bewaken de puntentelling, balkvoortgang, levelovergangen, de gebalanceerde blokkenzak en de latente affiniteit.
+De tests bewaken de puntentelling, timing, kwaliteit, combo, balkvoortgang, levelovergangen, de gebalanceerde blokkenzak en de latente affiniteit.
 
 ## Productiebuild controleren
 

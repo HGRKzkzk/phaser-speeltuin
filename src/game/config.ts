@@ -6,4 +6,23 @@ export const gameConfig = {
   progressForStageWin: 21,
   mistakesFromStartToGameOver: 6,
   barMovementPixels: 12,
+  comboWindowMs: 900,
+  levelParTimeMs: 18_000,
+  qualityThresholdsMs: {
+    perfect: 280,
+    great: 500,
+    good: 800,
+  },
+  qualityBonusPoints: {
+    steady: 0,
+    good: 1,
+    great: 2,
+    perfect: 3,
+  },
+  multiplierThresholds: [
+    { streak: 15, multiplier: 5 },
+    { streak: 10, multiplier: 4 },
+    { streak: 6, multiplier: 3 },
+    { streak: 3, multiplier: 2 },
+  ],
 } as const
