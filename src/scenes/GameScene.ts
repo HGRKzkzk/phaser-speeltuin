@@ -309,6 +309,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private presentLevel() {
+    this.scoreText.setText(`PUNTEN  ${this.state.score}`)
     this.levelText.setText(`LEVEL  ${this.state.level}`)
     this.styleProgressBars()
     this.syncProgressBars(260)
@@ -427,12 +428,18 @@ export class GameScene extends Phaser.Scene {
   }
 
   private commitAdventureChoice(choiceIndex: number) {
+    const scoreBefore = this.state.score
     this.state = chooseAdventureOption(this.state, choiceIndex, Math.random, this.time.now)
     this.destroyAdventureUI()
 
     if (this.state.status === 'adventure') {
       this.showAdventure()
       return
+    }
+
+    const bonus = this.state.score - scoreBefore
+    if (bonus > 0) {
+      this.showFeedback(`ONVERWACHT  +${bonus}`, '#fde68a')
     }
 
     this.presentLevel()

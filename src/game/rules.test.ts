@@ -15,7 +15,7 @@ import {
   startNextLevel,
 } from './rules'
 import { createSeededRandom } from './random'
-import type { GameState } from './types'
+import type { AdventureAlignment, AdventureChoice, AdventureStory, GameState } from './types'
 
 function stateWith(overrides: Partial<GameState>): GameState {
   return { ...createGameState(createSeededRandom(17)), ...overrides }
@@ -23,6 +23,20 @@ function stateWith(overrides: Partial<GameState>): GameState {
 
 function correctAttempt(state: GameState, atMs = 400, responseMs = 250) {
   return { ...state.path.blocks[state.path.activeIndex], atMs, responseMs }
+}
+
+// Bouwt een vaste keten a -> b -> c van twee stappen met gekozen houdingen,
+// zodat de laatste keuze in fragment 'c' tegen een bekend overwicht afgezet kan worden.
+function buildChainStory(firstAlignment: AdventureAlignment, secondAlignment: AdventureAlignment, finalChoices: AdventureChoice[]): AdventureStory {
+  return {
+    id: 'test-chain',
+    entryFragmentId: 'a',
+    fragments: {
+      a: { id: 'a', text: 'a', choices: [{ id: 'a1', label: 'a1', description: '', alignment: firstAlignment, next: 'b' }] },
+      b: { id: 'b', text: 'b', choices: [{ id: 'b1', label: 'b1', description: '', alignment: secondAlignment, next: 'c' }] },
+      c: { id: 'c', text: 'c', choices: finalChoices },
+    },
+  }
 }
 
 describe('levelgebonden zijde', () => {
@@ -171,7 +185,55 @@ describe('tekstavontuur', () => {
     expect(next.level).toBe(3)
     expect(next.score).toBe(12)
     expect(next.adventure?.fragmentId).toBe(choice.next)
-    expect(next.adventureLog).toEqual([{ adventureId: story.id, fragmentId: startFragment.id, choiceId: choice.id }])
+    expect(next.adventure?.priorAlignments).toEqual([choice.alignment])
+    expect(next.adventureLog).toEqual([
+      { adventureId: story.id, fragmentId: startFragment.id, choiceId: choice.id, alignment: choice.alignment },
+    ])
+  })
+
+  it('kent geen bonus toe als de laatste keuze het overwicht volgt', () => {
+    const story = buildChainStory('bold', 'bold', [
+      { id: 'c-bold', label: 'c-bold', description: '', alignment: 'bold', next: 'end' },
+      { id: 'c-wary', label: 'c-wary', description: '', alignment: 'wary', next: 'end' },
+    ])
+    const due = stateWith({ status: 'adventure', adventure: { story, fragmentId: 'a', priorAlignments: [] }, score: 10, level: 5 })
+    const afterA = chooseAdventureOption(due, 0)
+    const afterB = chooseAdventureOption(afterA, 0)
+    expect(afterB.adventure?.priorAlignments).toEqual(['bold', 'bold'])
+
+    const final = chooseAdventureOption(afterB, 0)
+    expect(final.status).toBe('playing')
+    expect(final.score).toBe(10)
+  })
+
+  it('kent de afwijkingsbonus toe als de laatste keuze tegen het overwicht ingaat', () => {
+    const story = buildChainStory('bold', 'bold', [
+      { id: 'c-bold', label: 'c-bold', description: '', alignment: 'bold', next: 'end' },
+      { id: 'c-wary', label: 'c-wary', description: '', alignment: 'wary', next: 'end' },
+    ])
+    const due = stateWith({ status: 'adventure', adventure: { story, fragmentId: 'a', priorAlignments: [] }, score: 10, level: 5 })
+    const afterA = chooseAdventureOption(due, 0)
+    const afterB = chooseAdventureOption(afterA, 0)
+
+    const final = chooseAdventureOption(afterB, 1)
+    expect(final.status).toBe('playing')
+    expect(final.score).toBe(10 + gameConfig.adventureDefianceBonus)
+  })
+
+  it('kent geen bonus toe als de voorgaande houdingen elkaar in evenwicht houden', () => {
+    const story = buildChainStory('bold', 'wary', [
+      { id: 'c-bold', label: 'c-bold', description: '', alignment: 'bold', next: 'end' },
+      { id: 'c-wary', label: 'c-wary', description: '', alignment: 'wary', next: 'end' },
+    ])
+    const due = stateWith({ status: 'adventure', adventure: { story, fragmentId: 'a', priorAlignments: [] }, score: 10, level: 5 })
+    const afterA = chooseAdventureOption(due, 0)
+    const afterB = chooseAdventureOption(afterA, 0)
+    expect(afterB.adventure?.priorAlignments).toEqual(['bold', 'wary'])
+
+    const finalBold = chooseAdventureOption(afterB, 0)
+    const finalWary = chooseAdventureOption(afterB, 1)
+    expect(finalBold.score).toBe(10)
+    expect(finalWary.score).toBe(10)
   })
 
   it('doorloopt een volledig avontuur tot het einde en gaat dan direct verder met het volgende level', () => {

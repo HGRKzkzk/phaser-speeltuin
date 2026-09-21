@@ -14,6 +14,8 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - **Tekstavontuur:** een onderbreking tussen twee levels die uit een reeks fragmenten bestaat en pas eindigt wanneer een keuze daar expliciet toe leidt.
 - **Fragment:** één stap binnen een tekstavontuur: een tekst met twee of drie keuzes, waarvan iedere keuze naar een volgend fragment leidt of het avontuur beëindigt.
 - **Keuzewijzer:** de kleinere, lager geplaatste balk die tijdens een tekstavontuur heen en weer beweegt zolang Shift wordt vastgehouden, en aangeeft welke keuze spatie op dit moment zou bevestigen via een kleine, terughoudende aanwijzing.
+- **Houding:** de gedurfde of behoedzame waarde van een keuze binnen een tekstavontuur; geen van beide is op zichzelf beter dan de andere.
+- **Overwicht:** de houding die onder de keuzes vóór de laatste keuze van een tekstavontuur vaker voorkomt dan de andere; er is geen overwicht als de aantallen gelijk zijn.
 
 ## Kernlus
 
@@ -48,9 +50,11 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - Een keuze wordt bevestigd door de spatiebalk in te drukken; de keuze waar de keuzewijzer op dat moment op wijst, is de gemaakte keuze.
 - Welke keuze de keuzewijzer op dat moment aanwijst, wordt slechts als kleine, terughoudende aanwijzing getoond; nooit als een expliciete tekstuele instructie op de keuze zelf.
 - Een gemaakte keuze leidt naar het volgende fragment van hetzelfde avontuur, of beëindigt het avontuur; nooit allebei tegelijk.
-- Zodra het avontuur eindigt, begint direct het volgende level, met dezelfde levelwissel van zijde als daarbuiten.
-- Een tekstavontuur wisselt nooit de score of het levelnummer tijdens het doorlopen ervan; alleen de gemaakte keuzes worden vastgelegd.
-- Een tekstavontuur heeft vooralsnog geen ander spelmechanisch gevolg dan die registratie; een latere regelwijziging moet een eventueel gevolg expliciet beschrijven.
+- Elke keuze in een tekstavontuur draagt een houding: gedurfd of behoedzaam.
+- Is er onder de keuzes vóór de laatste keuze van het avontuur een overwicht, en wijkt de houding van de laatste keuze daarvan af, dan levert dat een bonus van `adventureDefianceBonus` punten op.
+- Volgt de laatste keuze het overwicht, of is er geen overwicht, dan levert de laatste keuze geen bonus op.
+- Deze bonus is de enige score-invloed van een tekstavontuur; geen enkele andere keuze levert punten op of af, en het levelnummer wisselt niet tijdens het doorlopen ervan.
+- Zodra het avontuur eindigt, wordt de eventuele bonus toegekend en begint direct het volgende level, met dezelfde levelwissel van zijde als daarbuiten.
 
 ## Kleuren en richtingen
 
@@ -111,7 +115,9 @@ Deze regels mogen niet bij toeval veranderen tijdens visueel of technisch onderh
 - De beweging van de keuzewijzer zelf is presentatie; alleen de uiteindelijk gemaakte keuze is spelstatus.
 - Het huidige fragment van een tekstavontuur is spelstatus; welk fragment na een keuze volgt, ligt vast in het avontuur zelf, niet in de presentatie.
 - De aanwijzing van de keuzewijzer blijft klein en mag de aangewezen keuze nooit met tekst benoemen.
+- De afwijkingsbonus hangt alleen af van de houdingen binnen hetzelfde avontuur, nooit van eerdere avonturen of van de speler zijn algehele voortgang.
+- Geen van beide houdingen wordt door de regels als wenselijk, verplicht of fout aangemerkt; de bonus beloont het afwijken van het eigen patroon, niet een van de twee houdingen zelf.
 
 ## Afstelbare waarden
 
-Getallen zoals padlengte, punten, het aantal balkstappen tot winst of verlies en de mogelijke levelafstand tot een tekstavontuur staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.
+Getallen zoals padlengte, punten, het aantal balkstappen tot winst of verlies, de mogelijke levelafstand tot een tekstavontuur en de afwijkingsbonus staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.

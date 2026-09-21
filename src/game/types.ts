@@ -28,10 +28,13 @@ export type PathState = {
   activeIndex: number
 }
 
+export type AdventureAlignment = 'bold' | 'wary'
+
 export type AdventureChoice = {
   id: string
   label: string
   description: string
+  alignment: AdventureAlignment
   next: string
 }
 
@@ -50,12 +53,14 @@ export type AdventureStory = {
 export type ActiveAdventure = {
   story: AdventureStory
   fragmentId: string
+  priorAlignments: AdventureAlignment[]
 }
 
 export type AdventureChoiceRecord = {
   adventureId: string
   fragmentId: string
   choiceId: string
+  alignment: AdventureAlignment
 }
 
 export type GameState = {

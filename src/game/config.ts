@@ -7,6 +7,7 @@ export const gameConfig = {
   mistakesFromStartToGameOver: 6,
   barMovementPixels: 12,
   adventureLevelGapChoices: [2, 3, 4],
+  adventureDefianceBonus: 5,
   comboWindowMs: 900,
   levelTimeLimitMs: 18_000,
   timeReliefPerCorrectMs: 250,
