@@ -23,10 +23,24 @@ export function createPath(completedPaths: number, random: RandomSource = Math.r
   return { targetSide, blocks, activeIndex: 0 }
 }
 
-export function createRoundState(random: RandomSource = Math.random): GameState {
+export function createGameState(random: RandomSource = Math.random): GameState {
   return {
     score: 0,
+    level: 1,
+    status: 'playing',
     completedPaths: 0,
+    edgeProgress: { left: 0, right: 0 },
+    path: createPath(0, random),
+  }
+}
+
+export function startNextLevel(state: GameState, random: RandomSource = Math.random): GameState {
+  return {
+    score: state.score,
+    level: state.level + 1,
+    status: 'playing',
+    completedPaths: 0,
+    edgeProgress: { left: 0, right: 0 },
     path: createPath(0, random),
   }
 }
@@ -36,40 +50,69 @@ export function resolveAttempt(
   attempt: PlayerAttempt,
   random: RandomSource = Math.random,
 ): AttemptResolution {
+  if (state.status !== 'playing') {
+    throw new Error('Invoer is alleen toegestaan tijdens een actief level.')
+  }
+
   const activeBlock = state.path.blocks[state.path.activeIndex]
   const isCorrect = attempt.color === activeBlock.color && attempt.direction === activeBlock.direction
+  const activeSide = state.path.targetSide
 
   if (!isCorrect) {
+    const progress = state.edgeProgress[activeSide] - 1
+    const gameOver = progress <= -gameConfig.mistakesFromStartToGameOver
+
     return {
-      outcome: 'wrong',
+      outcome: gameOver ? 'game-over' : 'wrong',
       state: {
         ...state,
+        status: gameOver ? 'game-over' : 'playing',
         score: Math.max(0, state.score - gameConfig.penaltyPerMistake),
+        edgeProgress: { ...state.edgeProgress, [activeSide]: progress },
       },
     }
   }
 
-  const scoreAfterBlock = state.score + gameConfig.pointsPerBlock
+  const progress = state.edgeProgress[activeSide] + 1
   const activeIndex = state.path.activeIndex + 1
+  const pathIsComplete = activeIndex === state.path.blocks.length
+  const completedPaths = state.completedPaths + (pathIsComplete ? 1 : 0)
+  const score = state.score
+    + gameConfig.pointsPerBlock
+    + (pathIsComplete ? gameConfig.pointsPerCompletedPath : 0)
 
-  if (activeIndex < state.path.blocks.length) {
+  if (progress >= gameConfig.progressForStageWin) {
+    return {
+      outcome: 'stage-win',
+      state: {
+        ...state,
+        score,
+        status: 'stage-win',
+        completedPaths,
+        edgeProgress: { ...state.edgeProgress, [activeSide]: progress },
+      },
+    }
+  }
+
+  if (!pathIsComplete) {
     return {
       outcome: 'correct',
       state: {
         ...state,
-        score: scoreAfterBlock,
+        score,
+        edgeProgress: { ...state.edgeProgress, [activeSide]: progress },
         path: { ...state.path, activeIndex },
       },
     }
   }
 
-  const completedPaths = state.completedPaths + 1
-
   return {
     outcome: 'path-complete',
     state: {
-      score: scoreAfterBlock + gameConfig.pointsPerCompletedPath,
+      ...state,
+      score,
       completedPaths,
+      edgeProgress: { ...state.edgeProgress, [activeSide]: progress },
       path: createPath(completedPaths, random),
     },
   }
