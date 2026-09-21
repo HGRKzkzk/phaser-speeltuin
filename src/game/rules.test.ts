@@ -147,30 +147,62 @@ describe('tekstavontuur', () => {
     expect(isAdventureDue(result.state)).toBe(true)
   })
 
-  it('start een tekstavontuur met een scenario en een nieuwe levelafstand', () => {
+  it('start een tekstavontuur bij het eerste fragment van een verhaal', () => {
     const due = stateWith({ levelsUntilAdventure: 0, status: 'stage-win' })
     const adventureState = enterAdventure(due, createSeededRandom(5))
     expect(adventureState.status).toBe('adventure')
-    expect(adventureState.adventure?.scenario.choices.length).toBeGreaterThanOrEqual(2)
+    const { story, fragmentId } = adventureState.adventure!
+    expect(fragmentId).toBe(story.entryFragmentId)
+    expect(story.fragments[fragmentId].choices.length).toBeGreaterThanOrEqual(2)
     expect(gameConfig.adventureLevelGapChoices).toContain(adventureState.levelsUntilAdventure)
   })
 
-  it('legt de gemaakte keuze vast en gaat direct verder met het volgende level', () => {
+  it('leidt een niet-afsluitende keuze naar het volgende fragment, zonder het level te wisselen', () => {
     const due = stateWith({ levelsUntilAdventure: 0, status: 'stage-win', score: 12, level: 3 })
     const adventureState = enterAdventure(due, createSeededRandom(5))
-    const scenario = adventureState.adventure!.scenario
-    const next = chooseAdventureOption(adventureState, 0, createSeededRandom(9))
+    const { story, fragmentId } = adventureState.adventure!
+    const startFragment = story.fragments[fragmentId]
+    const choice = startFragment.choices[0]
+    expect(choice.next).not.toBe('end')
 
-    expect(next.status).toBe('playing')
-    expect(next.level).toBe(4)
+    const next = chooseAdventureOption(adventureState, 0)
+
+    expect(next.status).toBe('adventure')
+    expect(next.level).toBe(3)
     expect(next.score).toBe(12)
-    expect(next.adventure).toBeNull()
-    expect(next.adventureLog).toEqual([{ scenarioId: scenario.id, choiceId: scenario.choices[0].id }])
+    expect(next.adventure?.fragmentId).toBe(choice.next)
+    expect(next.adventureLog).toEqual([{ adventureId: story.id, fragmentId: startFragment.id, choiceId: choice.id }])
+  })
+
+  it('doorloopt een volledig avontuur tot het einde en gaat dan direct verder met het volgende level', () => {
+    const due = stateWith({ levelsUntilAdventure: 0, status: 'stage-win', score: 12, level: 3 })
+    let state = enterAdventure(due, createSeededRandom(5))
+    const storyId = state.adventure!.story.id
+
+    let steps = 0
+    while (state.status === 'adventure' && steps < 10) {
+      state = chooseAdventureOption(state, 0, createSeededRandom(steps))
+      steps += 1
+    }
+
+    expect(state.status).toBe('playing')
+    expect(state.level).toBe(4)
+    expect(state.score).toBe(12)
+    expect(state.adventure).toBeNull()
+    expect(state.adventureLog.length).toBe(steps)
+    expect(state.adventureLog.every((entry) => entry.adventureId === storyId)).toBe(true)
+    expect(state.adventureLog.at(-1)?.choiceId).toBeDefined()
   })
 
   it('weigert een keuze buiten een tekstavontuur', () => {
     const state = createGameState(createSeededRandom(17))
     expect(() => chooseAdventureOption(state, 0)).toThrow()
+  })
+
+  it('weigert een ongeldige keuze-index tijdens een tekstavontuur', () => {
+    const due = stateWith({ levelsUntilAdventure: 0, status: 'stage-win' })
+    const adventureState = enterAdventure(due, createSeededRandom(5))
+    expect(() => chooseAdventureOption(adventureState, 99)).toThrow()
   })
 })
 

@@ -32,20 +32,29 @@ export type AdventureChoice = {
   id: string
   label: string
   description: string
+  next: string
 }
 
-export type AdventureScenario = {
+export type AdventureFragment = {
   id: string
   text: string
   choices: AdventureChoice[]
 }
 
+export type AdventureStory = {
+  id: string
+  entryFragmentId: string
+  fragments: Record<string, AdventureFragment>
+}
+
 export type ActiveAdventure = {
-  scenario: AdventureScenario
+  story: AdventureStory
+  fragmentId: string
 }
 
 export type AdventureChoiceRecord = {
-  scenarioId: string
+  adventureId: string
+  fragmentId: string
   choiceId: string
 }
 

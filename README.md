@@ -21,7 +21,7 @@ Een goed blok beweegt de witte balk aan de actieve zijde naar het midden en duwt
 
 Rood en blauw bepalen alleen de kleur, niet de speelrichting. Bij het vasthouden van `A` of `D` krijgt het hele speelveld een subtiele gloed in de gekozen kleur. Vier kleine lichtpunten bouwen vanaf het begin mee met correct gespeelde blokken voor rood/blauw × links/rechts. Deze affiniteit blijft tussen levels bewaard, maar heeft nog geen spelmechanisch gevolg.
 
-Na willekeurig 2, 3 of 4 levels wacht een kort tekstavontuur voordat het volgende level begint. Houd `Shift` vast om de kleinere, lager geplaatste keuzewijzer heen en weer te laten bewegen tussen de keuzes; laat los om hem stil te zetten. Druk op de spatiebalk om de keuze te bevestigen waar de wijzer op dat moment op staat. De keuze wordt vastgelegd maar heeft nog geen ander spelmechanisch gevolg; score en level blijven ongewijzigd door de keuze zelf.
+Na willekeurig 2, 3 of 4 levels wacht een tekstavontuur van een paar fragmenten voordat het volgende level begint. Houd `Shift` vast om de kleinere, lager geplaatste keuzewijzer heen en weer te laten bewegen tussen de keuzes; laat los om hem stil te zetten. Druk op de spatiebalk om de keuze te bevestigen waar de wijzer op dat moment op staat; welke keuze dat is, wordt slechts als klein, terughoudend puntje getoond, nooit als expliciete tekst op de keuze zelf. Iedere keuze leidt naar het volgende fragment van hetzelfde avontuur of beëindigt het; pas dan begint het volgende level. De gemaakte keuzes worden vastgelegd maar hebben nog geen ander spelmechanisch gevolg; score en level blijven ongewijzigd tijdens het avontuur.
 
 ## Op je Chromebook installeren
 

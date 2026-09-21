@@ -27,7 +27,7 @@ type BlockView = {
 type AdventureChoiceView = {
   container: Phaser.GameObjects.Container
   box: Phaser.GameObjects.Rectangle
-  indicator: Phaser.GameObjects.Text
+  hint: Phaser.GameObjects.Arc
 }
 
 type ProgressBarView = {
@@ -324,17 +324,17 @@ export class GameScene extends Phaser.Scene {
     const adventure = this.state.adventure
     if (!adventure) return
 
-    const { scenario } = adventure
+    const fragment = adventure.story.fragments[adventure.fragmentId]
     const shade = this.add.rectangle(400, 250, 800, 500, 0x070b14, 0.92)
-    const storyText = this.addText(400, 150, scenario.text, 18, '#e2e8f0')
+    const storyText = this.addText(400, 150, fragment.text, 18, '#e2e8f0')
       .setOrigin(0.5)
       .setWordWrapWidth(620, true)
       .setAlign('center')
 
     const spacing = 220
-    const startX = CENTER_X - ((scenario.choices.length - 1) * spacing) / 2
-    this.adventureChoiceXs = scenario.choices.map((_, index) => startX + index * spacing)
-    this.adventureChoiceViews = scenario.choices.map((choice, index) =>
+    const startX = CENTER_X - ((fragment.choices.length - 1) * spacing) / 2
+    this.adventureChoiceXs = fragment.choices.map((_, index) => startX + index * spacing)
+    this.adventureChoiceViews = fragment.choices.map((choice, index) =>
       this.createAdventureChoiceView(this.adventureChoiceXs[index], choice),
     )
 
@@ -358,15 +358,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createAdventureChoiceView(x: number, choice: AdventureChoice): AdventureChoiceView {
-    const box = this.add.rectangle(0, 0, 190, 110, 0x111a2e, 0.9).setStrokeStyle(2, 0x334155)
+    const box = this.add.rectangle(0, 0, 190, 110, 0x111a2e, 0.82).setStrokeStyle(1, 0x334155)
     const label = this.addText(0, -32, choice.label, 16, '#f8fafc').setOrigin(0.5).setAlign('center')
     const description = this.addText(0, 2, choice.description, 13, '#94a3b8')
       .setOrigin(0.5)
       .setAlign('center')
       .setWordWrapWidth(160, true)
-    const indicator = this.addText(0, 40, '', 12, '#86efac').setOrigin(0.5)
-    const container = this.add.container(x, 265, [box, label, description, indicator])
-    return { container, box, indicator }
+    const hint = this.add.circle(0, 42, 3, 0xf8fafc, 0)
+    const container = this.add.container(x, 265, [box, label, description, hint])
+    return { container, box, hint }
   }
 
   private createAdventureSelector() {
@@ -420,15 +420,21 @@ export class GameScene extends Phaser.Scene {
   private highlightAdventureChoice(pointedIndex: number) {
     this.adventureChoiceViews.forEach((view, index) => {
       const isPointed = index === pointedIndex
-      view.box.setStrokeStyle(isPointed ? 3 : 2, isPointed ? 0x86efac : 0x334155)
-      view.box.setFillStyle(0x111a2e, isPointed ? 1 : 0.9)
-      view.indicator.setText(isPointed ? 'SPATIE = DEZE KEUZE' : '')
+      view.box.setStrokeStyle(1, isPointed ? 0x64748b : 0x334155)
+      view.box.setFillStyle(0x111a2e, isPointed ? 0.92 : 0.82)
+      view.hint.setAlpha(isPointed ? 0.45 : 0)
     })
   }
 
   private commitAdventureChoice(choiceIndex: number) {
     this.state = chooseAdventureOption(this.state, choiceIndex, Math.random, this.time.now)
     this.destroyAdventureUI()
+
+    if (this.state.status === 'adventure') {
+      this.showAdventure()
+      return
+    }
+
     this.presentLevel()
   }
 

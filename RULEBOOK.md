@@ -11,8 +11,9 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - **Actief blok:** het enige blok waarop invoer op dat moment betrekking heeft.
 - **Voortgangsbalk:** de gloeiende balk aan iedere buitenzijde van het speelveld.
 - **Affiniteit:** de blijvende registratie van aangeboden en correct gespeelde blokken per combinatie van zijde en kleur.
-- **Tekstavontuur:** een korte onderbreking tussen twee levels met een tekstfragment en twee of drie keuzes.
-- **Keuzewijzer:** de kleinere, lager geplaatste balk die tijdens een tekstavontuur heen en weer beweegt zolang Shift wordt vastgehouden, en aangeeft welke keuze spatie op dit moment zou bevestigen.
+- **Tekstavontuur:** een onderbreking tussen twee levels die uit een reeks fragmenten bestaat en pas eindigt wanneer een keuze daar expliciet toe leidt.
+- **Fragment:** één stap binnen een tekstavontuur: een tekst met twee of drie keuzes, waarvan iedere keuze naar een volgend fragment leidt of het avontuur beëindigt.
+- **Keuzewijzer:** de kleinere, lager geplaatste balk die tijdens een tekstavontuur heen en weer beweegt zolang Shift wordt vastgehouden, en aangeeft welke keuze spatie op dit moment zou bevestigen via een kleine, terughoudende aanwijzing.
 
 ## Kernlus
 
@@ -42,11 +43,13 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - Bij het begin van een spel en na ieder tekstavontuur wordt opnieuw willekeurig getrokken hoeveel levels er nog moeten volgen voordat het volgende tekstavontuur begint: 2, 3 of 4.
 - Iedere stage-win telt dat aantal met één af.
 - Staat dat aantal na een stage-win op nul, dan begint in plaats van het volgende level eerst een tekstavontuur.
-- Een tekstavontuur toont één tekstfragment met twee of drie keuzes.
+- Een tekstavontuur begint bij het eerste fragment van een willekeurig gekozen avontuur en toont daarna telkens één fragment met twee of drie keuzes.
 - De keuzewijzer beweegt zolang Shift wordt vastgehouden en staat stil zodra Shift wordt losgelaten.
 - Een keuze wordt bevestigd door de spatiebalk in te drukken; de keuze waar de keuzewijzer op dat moment op wijst, is de gemaakte keuze.
-- Na een gemaakte keuze begint direct het volgende level, met dezelfde levelwissel van zijde als daarbuiten.
-- Een tekstavontuur wisselt nooit de score of het levelnummer; alleen de gemaakte keuze wordt vastgelegd.
+- Welke keuze de keuzewijzer op dat moment aanwijst, wordt slechts als kleine, terughoudende aanwijzing getoond; nooit als een expliciete tekstuele instructie op de keuze zelf.
+- Een gemaakte keuze leidt naar het volgende fragment van hetzelfde avontuur, of beëindigt het avontuur; nooit allebei tegelijk.
+- Zodra het avontuur eindigt, begint direct het volgende level, met dezelfde levelwissel van zijde als daarbuiten.
+- Een tekstavontuur wisselt nooit de score of het levelnummer tijdens het doorlopen ervan; alleen de gemaakte keuzes worden vastgelegd.
 - Een tekstavontuur heeft vooralsnog geen ander spelmechanisch gevolg dan die registratie; een latere regelwijziging moet een eventueel gevolg expliciet beschrijven.
 
 ## Kleuren en richtingen
@@ -106,6 +109,8 @@ Deze regels mogen niet bij toeval veranderen tijdens visueel of technisch onderh
 - Tijdens een tekstavontuur wijst de keuzewijzer altijd op precies één keuze.
 - Het aantal levels tot het volgende tekstavontuur wordt nooit tijdens een lopend level opnieuw getrokken, alleen bij het begin van een spel of na een tekstavontuur.
 - De beweging van de keuzewijzer zelf is presentatie; alleen de uiteindelijk gemaakte keuze is spelstatus.
+- Het huidige fragment van een tekstavontuur is spelstatus; welk fragment na een keuze volgt, ligt vast in het avontuur zelf, niet in de presentatie.
+- De aanwijzing van de keuzewijzer blijft klein en mag de aangewezen keuze nooit met tekst benoemen.
 
 ## Afstelbare waarden
 

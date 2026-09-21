@@ -1,5 +1,5 @@
 import { gameConfig } from './config'
-import { pickAdventureScenario } from './adventures'
+import { pickAdventureStory } from './adventures'
 import type {
   AffinityMatrix,
   AttemptResolution,
@@ -137,10 +137,11 @@ export function isAdventureDue(state: GameState): boolean {
 }
 
 export function enterAdventure(state: GameState, random: RandomSource = Math.random): GameState {
+  const story = pickAdventureStory(random)
   return {
     ...state,
     status: 'adventure',
-    adventure: { scenario: pickAdventureScenario(random) },
+    adventure: { story, fragmentId: story.entryFragmentId },
     levelsUntilAdventure: pickAdventureGap(random),
   }
 }
@@ -155,15 +156,25 @@ export function chooseAdventureOption(
     throw new Error('Een keuze is alleen toegestaan tijdens een tekstavontuur.')
   }
 
-  const choice = state.adventure.scenario.choices[choiceIndex]
+  const { story, fragmentId } = state.adventure
+  const fragment = story.fragments[fragmentId]
+  const choice = fragment.choices[choiceIndex]
   if (!choice) {
     throw new Error('Ongeldige keuze-index.')
   }
 
   const adventureLog = [
     ...state.adventureLog,
-    { scenarioId: state.adventure.scenario.id, choiceId: choice.id },
+    { adventureId: story.id, fragmentId: fragment.id, choiceId: choice.id },
   ]
+
+  if (choice.next !== 'end') {
+    return {
+      ...state,
+      adventure: { story, fragmentId: choice.next },
+      adventureLog,
+    }
+  }
 
   return startNextLevel({ ...state, adventure: null, adventureLog }, random, nowMs)
 }
