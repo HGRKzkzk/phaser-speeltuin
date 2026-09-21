@@ -6,15 +6,18 @@ De demo tekent alles met code, dus je hoeft geen afbeeldingen of andere assets t
 
 ## Spelregels
 
-Een ronde duurt 17 seconden. Het spel kiest per reeks de linker- of rechterrand als doel. Speel vanaf het midden zeven willekeurige blokken weg om die rand te bereiken:
+Een ronde duurt 17 seconden. Speel vanaf het midden zeven willekeurige blokken weg om de actieve rand te bereiken:
 
 - houd `A` vast voor een rood blok of `D` voor een blauw blok;
-- druk tegelijk op `↑` of `→`, passend bij de pijl op het actieve blok;
+- druk tegelijk op de richting van het actieve blok;
+- de eerste drie reeksen gebruiken `↑` en `→`, de volgende drie `↑` en `←`; daarna wisselt dit opnieuw;
 - een goed blok levert 1 punt op;
 - de rand bereiken levert 3 bonuspunten op;
 - een verkeerde combinatie kost 1 punt, tot een minimum van 0.
 
 Na afloop druk je op de spatiebalk om onmiddellijk een nieuwe ronde te beginnen. Je beste score wordt lokaal in de browser bewaard.
+
+Rood en blauw bepalen alleen de kleur, niet de speelrichting. Bij het vasthouden van `A` of `D` krijgt het hele speelveld een subtiele gloed in de gekozen kleur. Het aantal reeksen voor een richtingswissel staat bovenaan `GameScene.ts` in `DIRECTION_SWITCH_EVERY`.
 
 ## Op je Chromebook installeren
 
