@@ -11,8 +11,6 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - **Actief blok:** het enige blok waarop invoer op dat moment betrekking heeft.
 - **Voortgangsbalk:** de gloeiende balk aan iedere buitenzijde van het speelveld.
 - **Affiniteit:** de blijvende registratie van aangeboden en correct gespeelde blokken per combinatie van zijde en kleur.
-- **Tekstavontuur:** een korte onderbreking tussen twee levels met een tekstfragment en twee of drie keuzes.
-- **Keuzewijzer:** de kleinere, lager geplaatste balk die tijdens een tekstavontuur heen en weer beweegt zolang Shift wordt vastgehouden, en aangeeft welke keuze spatie op dit moment zou bevestigen.
 
 ## Kernlus
 
@@ -26,24 +24,14 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 ## Balken, stage win en game over
 
 - De linker- en rechterbalk bewaren onafhankelijk hun positie binnen het level.
-- Ieder level heeft één actieve zijde; alleen de balk aan die zijde beweegt.
-- Wanneer een balk de middenbalk raakt, is het level gewonnen.
+- Ieder level heeft één actieve zijde; de balk aan die zijde is wit en reageert op de invoer van de speler.
+- De balk aan de andere zijde is rood en beweegt uitsluitend door het verstrijken van tijd onafgebroken naar het midden.
+- Wanneer de witte actieve balk de middenbalk raakt, is het level gewonnen.
+- Wanneer de rode tijdsbalk de middenbalk raakt, is het game over.
 - Bij een stage win blijft de totaalscore bewaard en begint het volgende level met beide balken op hun beginpositie.
 - Het volgende level gebruikt de andere zijde en de bijbehorende horizontale richting.
 - Wanneer een balk de buitenrand raakt, is het game over.
 - Een volledig nieuw spel begint opnieuw in level 1 met nul punten.
-
-## Tekstavontuur
-
-- Bij het begin van een spel en na ieder tekstavontuur wordt opnieuw willekeurig getrokken hoeveel levels er nog moeten volgen voordat het volgende tekstavontuur begint: 2, 3 of 4.
-- Iedere stage-win telt dat aantal met één af.
-- Staat dat aantal na een stage-win op nul, dan begint in plaats van het volgende level eerst een tekstavontuur.
-- Een tekstavontuur toont één tekstfragment met twee of drie keuzes.
-- De keuzewijzer beweegt zolang Shift wordt vastgehouden en staat stil zodra Shift wordt losgelaten.
-- Een keuze wordt bevestigd door de spatiebalk in te drukken; de keuze waar de keuzewijzer op dat moment op wijst, is de gemaakte keuze.
-- Na een gemaakte keuze begint direct het volgende level, met dezelfde levelwissel van zijde als daarbuiten.
-- Een tekstavontuur wisselt nooit de score of het levelnummer; alleen de gemaakte keuze wordt vastgelegd.
-- Een tekstavontuur heeft vooralsnog geen ander spelmechanisch gevolg dan die registratie; een latere regelwijziging moet een eventueel gevolg expliciet beschrijven.
 
 ## Kleuren en richtingen
 
@@ -65,11 +53,24 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 
 ## Puntentelling
 
-- Juist blok: 1 punt.
+- Een juist blok heeft 1 basispunt.
+- De reactietijd bepaalt een kwaliteitsbonus; de actieve multiplier vermenigvuldigt basispunt en kwaliteitsbonus.
 - Pad voltooid: 3 bonuspunten.
 - Verkeerde combinatie: 1 punt eraf.
 - Een score kan nooit lager worden dan nul.
 - Alleen een juist blok verplaatst een balk naar binnen; de padbonus veroorzaakt geen extra balkstappen.
+
+## Tijd, kwaliteit en combo
+
+- Ieder actief blok krijgt een eigen reactietijd vanaf het moment waarop het actief wordt.
+- De kwaliteitsniveaus zijn `STEADY`, `GOOD`, `GREAT` en `PERFECT`.
+- Snelle opeenvolgende goede treffers bouwen een combo op.
+- De multiplier wordt ×2 na 3 treffers, ×3 na 6, ×4 na 10 en ×5 na 15.
+- Meer dan 900 milliseconden tussen twee goede treffers begint een nieuwe combo.
+- Een fout verbreekt de combo onmiddellijk.
+- De rode balk heeft 18 seconden nodig om het midden te bereiken; diezelfde grens bepaalt de tijdbonus bij een eerdere stage-win.
+- Multiplier en kwaliteit beïnvloeden alleen de score; iedere goede treffer blijft precies één balkstap waard.
+- Visuele effecten mogen met de multiplier meegroeien, maar nooit de leesbaarheid van het actieve blok aantasten.
 
 ## Invarianten
 
@@ -80,12 +81,11 @@ Deze regels mogen niet bij toeval veranderen tijdens visueel of technisch onderh
 - Een horizontale richting wijst altijd naar de actieve zijde.
 - Binnen één level verandert de actieve zijde niet.
 - Score en balkposities worden door de regelkern bepaald, niet door animaties.
+- Reactietijd wordt door de scène gemeten, maar kwaliteit, combo, multiplier en punten worden door de regelkern bepaald.
+- De scène tekent de rode balk op basis van de verstreken tijd; de regelkern bepaalt wanneer die tijd game over veroorzaakt.
 - Een volgend level bewaart de score; een nieuw spel wist de score.
 - Affiniteit en aanbod worden door de regelkern geregistreerd, niet door de presentatie.
-- Tijdens een tekstavontuur wijst de keuzewijzer altijd op precies één keuze.
-- Het aantal levels tot het volgende tekstavontuur wordt nooit tijdens een lopend level opnieuw getrokken, alleen bij het begin van een spel of na een tekstavontuur.
-- De beweging van de keuzewijzer zelf is presentatie; alleen de uiteindelijk gemaakte keuze is spelstatus.
 
 ## Afstelbare waarden
 
-Getallen zoals padlengte, punten, het aantal balkstappen tot winst of verlies en de mogelijke levelafstand tot een tekstavontuur staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.
+Getallen zoals padlengte, punten en het aantal balkstappen tot winst of verlies staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.
