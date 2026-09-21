@@ -1,7 +1,7 @@
 export type BlockColor = 'red' | 'blue'
 export type BlockDirection = 'up' | 'left' | 'right'
 export type TargetSide = 'left' | 'right'
-export type GameStatus = 'playing' | 'stage-win' | 'game-over'
+export type GameStatus = 'playing' | 'stage-win' | 'game-over' | 'adventure'
 export type HitQuality = 'steady' | 'good' | 'great' | 'perfect'
 
 export type ComboState = {
@@ -28,6 +28,27 @@ export type PathState = {
   activeIndex: number
 }
 
+export type AdventureChoice = {
+  id: string
+  label: string
+  description: string
+}
+
+export type AdventureScenario = {
+  id: string
+  text: string
+  choices: AdventureChoice[]
+}
+
+export type ActiveAdventure = {
+  scenario: AdventureScenario
+}
+
+export type AdventureChoiceRecord = {
+  scenarioId: string
+  choiceId: string
+}
+
 export type GameState = {
   score: number
   level: number
@@ -38,6 +59,9 @@ export type GameState = {
   combo: ComboState
   levelStartedAtMs: number
   path: PathState
+  levelsUntilAdventure: number
+  adventure: ActiveAdventure | null
+  adventureLog: AdventureChoiceRecord[]
 }
 
 export type PlayerAttempt = {
