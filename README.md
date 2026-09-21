@@ -15,11 +15,11 @@ Speel vanaf het midden zeven willekeurige blokken per pad weg:
 - een voltooid pad levert 3 bonuspunten op;
 - een verkeerde combinatie kost 1 punt, tot een minimum van 0.
 
-Een goed blok beweegt de gloeiende balk aan de actieve zijde naar het midden. Een fout beweegt die balk naar de buitenrand. Raakt een balk het midden, dan win je het level, neem je de score mee en wisselt het volgende level van zijde. Raakt een balk de buitenrand, dan is het game over. Met de spatiebalk begin je opnieuw; je beste score wordt lokaal bewaard.
+Reactietijd geeft iedere goede treffer de kwaliteit `STEADY`, `GOOD`, `GREAT` of `PERFECT`. Snelle opeenvolgende treffers bouwen een multiplier op van ×2 tot ×5. Een fout breekt de combo. De rode balk heeft 18 seconden nodig om het midden te bereiken; een eerdere level-clear levert een tijdbonus op. De effecten groeien mee met de multiplier, maar witte balkvoortgang blijft altijd precies één stap per goed blok.
+
+Een goed blok beweegt de witte balk aan de actieve zijde naar het midden. Een fout beweegt die balk naar de buitenrand. Aan de andere zijde kruipt een rode balk puur door het verstrijken van tijd onafgebroken naar het midden. Bereikt wit het midden eerst, dan win je het level en wisselt het volgende level van zijde. Bereikt rood het midden of wit de buitenrand, dan is het game over. Met de spatiebalk begin je opnieuw; je beste score wordt lokaal bewaard.
 
 Rood en blauw bepalen alleen de kleur, niet de speelrichting. Bij het vasthouden van `A` of `D` krijgt het hele speelveld een subtiele gloed in de gekozen kleur. Vier kleine lichtpunten bouwen vanaf het begin mee met correct gespeelde blokken voor rood/blauw × links/rechts. Deze affiniteit blijft tussen levels bewaard, maar heeft nog geen spelmechanisch gevolg.
-
-Na willekeurig 2, 3 of 4 levels wacht een kort tekstavontuur voordat het volgende level begint. Houd `Shift` vast om de kleinere, lager geplaatste keuzewijzer heen en weer te laten bewegen tussen de keuzes; laat los om hem stil te zetten. Druk op de spatiebalk om de keuze te bevestigen waar de wijzer op dat moment op staat. De keuze wordt vastgelegd maar heeft nog geen ander spelmechanisch gevolg; score en level blijven ongewijzigd door de keuze zelf.
 
 ## Op je Chromebook installeren
 
@@ -58,7 +58,6 @@ npm run dev
 - `RULEBOOK.md`: de betekenis en vaste regels van het spel.
 - `src/game/config.ts`: alle afstelbare getallen.
 - `src/game/rules.ts`: de spelregels zonder Phaser of weergavecode.
-- `src/game/adventures.ts`: de verhaalfragmenten en keuzes van het tekstavontuur.
 - `src/game/types.ts`: de gedeelde begrippen als TypeScript-types.
 - `src/scenes/GameScene.ts`: toetsen, animaties en weergave.
 - `src/main.ts`: de algemene Phaser-instellingen.
@@ -72,7 +71,7 @@ Pas tempo, score of padlengte aan in `config.ts`. Pas een fundamentele spelregel
 npm test
 ```
 
-De tests bewaken de puntentelling, balkvoortgang, levelovergangen, de gebalanceerde blokkenzak, de latente affiniteit en het tekstavontuur.
+De tests bewaken de puntentelling, timing, kwaliteit, combo, balkvoortgang, levelovergangen, de gebalanceerde blokkenzak en de latente affiniteit.
 
 ## Productiebuild controleren
 
