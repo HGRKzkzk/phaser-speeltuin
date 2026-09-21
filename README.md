@@ -2,7 +2,19 @@
 
 Een kleine, lichte basis om op een Chromebook met [Phaser](https://phaser.io/), TypeScript en Vite te experimenteren.
 
-De demo tekent alles met code, dus je hoeft nog geen afbeeldingen of andere assets te downloaden. Je bestuurt de gele cirkel met de pijltjestoetsen of WASD.
+De demo tekent alles met code, dus je hoeft geen afbeeldingen of andere assets te downloaden.
+
+## Spelregels
+
+Een ronde duurt 17 seconden. Het spel kiest per reeks de linker- of rechterrand als doel. Speel vanaf het midden zeven willekeurige blokken weg om die rand te bereiken:
+
+- houd `A` vast voor een rood blok of `D` voor een blauw blok;
+- druk tegelijk op `↑` of `→`, passend bij de pijl op het actieve blok;
+- een goed blok levert 1 punt op;
+- de rand bereiken levert 3 bonuspunten op;
+- een verkeerde combinatie kost 1 punt, tot een minimum van 0.
+
+Na afloop druk je op de spatiebalk om onmiddellijk een nieuwe ronde te beginnen. Je beste score wordt lokaal in de browser bewaard.
 
 ## Op je Chromebook installeren
 
@@ -42,7 +54,7 @@ npm run dev
 - `src/main.ts`: de algemene Phaser-instellingen.
 - `src/style.css`: de pagina rondom het spel.
 
-Vervang bijvoorbeeld in `GameScene.ts` de kleur `0xf6c453`, verander `acceleration`, of voeg in `create()` een tweede vorm toe.
+Pas bijvoorbeeld in `GameScene.ts` de rondetijd, kleuren, score of het aantal blokken aan.
 
 ## Productiebuild controleren
 
