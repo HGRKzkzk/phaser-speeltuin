@@ -214,7 +214,7 @@ describe('tijd, kwaliteit en combo', () => {
     })
     const result = resolveAttempt(state, correctAttempt(state, 5_000, 250))
     expect(result.outcome).toBe('stage-win')
-    expect(result.timeBonus).toBe(13)
+    expect(result.timeBonus).toBe(14)
     expect(result.scoreDelta).toBeGreaterThan(result.timeBonus)
   })
 
@@ -223,6 +223,26 @@ describe('tijd, kwaliteit en combo', () => {
     expect(getTimePressure(state, 1_000)).toBe(0)
     expect(getTimePressure(state, 1_000 + gameConfig.levelTimeLimitMs / 2)).toBe(0.5)
     expect(getTimePressure(state, 1_000 + gameConfig.levelTimeLimitMs)).toBe(1)
+  })
+
+  it('duwt de rode tijdslijn bij iedere correcte treffer een beetje terug', () => {
+    const initial = createGameState(createSeededRandom(17), 0)
+    const before = getTimePressure(initial, 9_000)
+    const afterHit = resolveAttempt(initial, correctAttempt(initial, 9_000, 250)).state
+
+    expect(afterHit.timeReliefMs).toBe(gameConfig.timeReliefPerCorrectMs)
+    expect(getTimePressure(afterHit, 9_000)).toBeLessThan(before)
+  })
+
+  it('laat de tijd bij een langzaam speeltempo netto oprukken', () => {
+    let state = createGameState(createSeededRandom(17), 0)
+
+    for (const atMs of [2_000, 4_000, 6_000]) {
+      state = resolveAttempt(state, correctAttempt(state, atMs, 1_200)).state
+    }
+
+    expect(state.timeReliefMs).toBe(3 * gameConfig.timeReliefPerCorrectMs)
+    expect(getTimePressure(state, 6_000)).toBeGreaterThan(0.25)
   })
 
   it('geeft game over wanneer de rode tijdslijn het midden bereikt', () => {
