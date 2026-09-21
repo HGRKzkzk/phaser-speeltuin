@@ -58,6 +58,7 @@ export type GameState = {
   affinity: AffinityMatrix
   combo: ComboState
   levelStartedAtMs: number
+  timeReliefMs: number
   path: PathState
   levelsUntilAdventure: number
   adventure: ActiveAdventure | null

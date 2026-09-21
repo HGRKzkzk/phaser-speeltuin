@@ -27,7 +27,9 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 
 - De linker- en rechterbalk bewaren onafhankelijk hun positie binnen het level.
 - Ieder level heeft één actieve zijde; de balk aan die zijde is wit en reageert op de invoer van de speler.
-- De balk aan de andere zijde is rood en beweegt uitsluitend door het verstrijken van tijd onafgebroken naar het midden.
+- De balk aan de andere zijde is rood en beweegt door het verstrijken van tijd onafgebroken naar het midden.
+- Iedere correcte treffer duwt de rode tijdsbalk een klein, vast stukje terug. Dit levert 250 milliseconden op.
+- Langzaam spelen koopt minder tijd terug dan er verstrijkt; alleen een voldoende hoog raaktempo kan de rode balk blijvend voorblijven.
 - Wanneer de witte actieve balk de middenbalk raakt, is het level gewonnen.
 - Wanneer de rode tijdsbalk de middenbalk raakt, is het game over.
 - Bij een stage win blijft de totaalscore bewaard en begint het volgende level met beide balken op hun beginpositie.
@@ -82,7 +84,8 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - De multiplier wordt ×2 na 3 treffers, ×3 na 6, ×4 na 10 en ×5 na 15.
 - Meer dan 900 milliseconden tussen twee goede treffers begint een nieuwe combo.
 - Een fout verbreekt de combo onmiddellijk.
-- De rode balk heeft 18 seconden nodig om het midden te bereiken; diezelfde grens bepaalt de tijdbonus bij een eerdere stage-win.
+- Zonder goede treffers heeft de rode balk 18 seconden nodig om het midden te bereiken.
+- Iedere goede treffer koopt 250 milliseconden terug; de actuele positie van de rode balk bepaalt ook de tijdbonus bij een eerdere stage-win.
 - Multiplier en kwaliteit beïnvloeden alleen de score; iedere goede treffer blijft precies één balkstap waard.
 - Visuele effecten mogen met de multiplier meegroeien, maar nooit de leesbaarheid van het actieve blok aantasten.
 
@@ -97,6 +100,7 @@ Deze regels mogen niet bij toeval veranderen tijdens visueel of technisch onderh
 - Score en balkposities worden door de regelkern bepaald, niet door animaties.
 - Reactietijd wordt door de scène gemeten, maar kwaliteit, combo, multiplier en punten worden door de regelkern bepaald.
 - De scène tekent de rode balk op basis van de verstreken tijd; de regelkern bepaalt wanneer die tijd game over veroorzaakt.
+- Teruggewonnen tijd wordt door de regelkern bijgehouden en bij ieder nieuw level op nul gezet.
 - Een volgend level bewaart de score; een nieuw spel wist de score.
 - Affiniteit en aanbod worden door de regelkern geregistreerd, niet door de presentatie.
 - Tijdens een tekstavontuur wijst de keuzewijzer altijd op precies één keuze.
