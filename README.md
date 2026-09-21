@@ -10,14 +10,14 @@ Speel vanaf het midden zeven willekeurige blokken per pad weg:
 
 - houd `A` vast voor een rood blok of `D` voor een blauw blok;
 - druk tegelijk op de richting van het actieve blok;
-- de eerste drie reeksen gebruiken `↑` en `→`, de volgende drie `↑` en `←`; daarna wisselt dit opnieuw;
+- oneven levels gebruiken `↑` en `→`, even levels gebruiken `↑` en `←`;
 - een goed blok levert 1 punt op;
 - een voltooid pad levert 3 bonuspunten op;
 - een verkeerde combinatie kost 1 punt, tot een minimum van 0.
 
-Een goed blok beweegt de gloeiende balk aan de actieve zijde naar het midden. Een fout beweegt die balk naar de buitenrand. Raakt een balk het midden, dan win je het level en neem je de score mee naar het volgende level. Raakt een balk de buitenrand, dan is het game over. Met de spatiebalk begin je opnieuw; je beste score wordt lokaal bewaard.
+Een goed blok beweegt de gloeiende balk aan de actieve zijde naar het midden. Een fout beweegt die balk naar de buitenrand. Raakt een balk het midden, dan win je het level, neem je de score mee en wisselt het volgende level van zijde. Raakt een balk de buitenrand, dan is het game over. Met de spatiebalk begin je opnieuw; je beste score wordt lokaal bewaard.
 
-Rood en blauw bepalen alleen de kleur, niet de speelrichting. Bij het vasthouden van `A` of `D` krijgt het hele speelveld een subtiele gloed in de gekozen kleur. Het aantal paden voor een richtingswissel staat in `src/game/config.ts`.
+Rood en blauw bepalen alleen de kleur, niet de speelrichting. Bij het vasthouden van `A` of `D` krijgt het hele speelveld een subtiele gloed in de gekozen kleur. Vier kleine lichtpunten bouwen vanaf het begin mee met correct gespeelde blokken voor rood/blauw × links/rechts. Deze affiniteit blijft tussen levels bewaard, maar heeft nog geen spelmechanisch gevolg.
 
 ## Op je Chromebook installeren
 
@@ -69,7 +69,7 @@ Pas tempo, score of padlengte aan in `config.ts`. Pas een fundamentele spelregel
 npm test
 ```
 
-De tests bewaken de puntentelling, balkvoortgang, levelovergangen, kleur/richting en richtingsfasen.
+De tests bewaken de puntentelling, balkvoortgang, levelovergangen, de gebalanceerde blokkenzak en de latente affiniteit.
 
 ## Productiebuild controleren
 

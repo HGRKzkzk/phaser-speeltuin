@@ -31,6 +31,7 @@ export class GameScene extends Phaser.Scene {
   private overlay?: Phaser.GameObjects.Container
   private colorWash!: Phaser.GameObjects.Rectangle
   private progressBars!: Record<TargetSide, Phaser.GameObjects.Container>
+  private affinityLights!: Record<TargetSide, Record<BlockColor, Phaser.GameObjects.Arc>>
 
   constructor() {
     super('game')
@@ -46,6 +47,16 @@ export class GameScene extends Phaser.Scene {
     this.progressBars = {
       left: this.createProgressBar('left'),
       right: this.createProgressBar('right'),
+    }
+    this.affinityLights = {
+      left: {
+        red: this.createAffinityLight(354, 425, 'red'),
+        blue: this.createAffinityLight(376, 425, 'blue'),
+      },
+      right: {
+        red: this.createAffinityLight(424, 425, 'red'),
+        blue: this.createAffinityLight(446, 425, 'blue'),
+      },
     }
     this.colorWash = this.add.rectangle(400, 250, 800, 500, 0xffffff, 0).setDepth(10)
 
@@ -96,6 +107,7 @@ export class GameScene extends Phaser.Scene {
     this.feedbackText.setText('')
     this.colorWash.setAlpha(0)
     this.syncProgressBars()
+    this.updateAffinityLights()
     this.renderPath()
   }
 
@@ -104,8 +116,7 @@ export class GameScene extends Phaser.Scene {
 
     const { targetSide, blocks } = this.state.path
     const horizontalArrow = targetSide === 'left' ? '←' : '→'
-    const phasePath = (this.state.completedPaths % gameConfig.pathsPerDirectionPhase) + 1
-    this.sideText.setText(`${horizontalArrow} + ↑  ·  PAD ${phasePath}/${gameConfig.pathsPerDirectionPhase}`)
+    this.sideText.setText(`${horizontalArrow} + ↑  ·  PAD ${this.state.completedPaths + 1}`)
 
     blocks.forEach((block, index) => {
       const step = index * 50
@@ -143,6 +154,11 @@ export class GameScene extends Phaser.Scene {
     return bar
   }
 
+  private createAffinityLight(x: number, y: number, color: BlockColor) {
+    const fill = color === 'red' ? 0xff2d55 : 0x1687ff
+    return this.add.circle(x, y, 5, fill, 0.18).setStrokeStyle(1, 0xffffff, 0.12)
+  }
+
   private tryBlock(direction: BlockDirection, color: BlockColor | null) {
     const activeSide = this.state.path.targetSide
     const activeView = this.blockViews[this.state.path.activeIndex]
@@ -163,6 +179,9 @@ export class GameScene extends Phaser.Scene {
       }
       return
     }
+
+    this.updateAffinityLights()
+    this.pulseAffinity(activeSide, activeView.block.color)
 
     this.tweens.add({
       targets: activeView.view,
@@ -204,6 +223,7 @@ export class GameScene extends Phaser.Scene {
       this.state = startNextLevel(this.state)
       this.levelText.setText(`LEVEL  ${this.state.level}`)
       this.syncProgressBars(260)
+      this.updateAffinityLights()
       this.renderPath()
       this.time.delayedCall(280, () => {
         this.inputIsLocked = false
@@ -246,6 +266,29 @@ export class GameScene extends Phaser.Scene {
   private getBarX(side: TargetSide) {
     const distance = this.state.edgeProgress[side] * gameConfig.barMovementPixels
     return side === 'left' ? BAR_START_X.left + distance : BAR_START_X.right - distance
+  }
+
+  private updateAffinityLights() {
+    ;(['left', 'right'] as TargetSide[]).forEach((side) => {
+      ;(['red', 'blue'] as BlockColor[]).forEach((color) => {
+        const correct = this.state.affinity[side][color].correct
+        this.affinityLights[side][color].setAlpha(0.18 + Math.min(0.62, correct * 0.025))
+      })
+    })
+  }
+
+  private pulseAffinity(side: TargetSide, color: BlockColor) {
+    const light = this.affinityLights[side][color]
+    this.tweens.killTweensOf(light)
+    light.setScale(1)
+    this.tweens.add({
+      targets: light,
+      scale: 1.8,
+      alpha: 1,
+      duration: 90,
+      yoyo: true,
+      onComplete: () => this.updateAffinityLights(),
+    })
   }
 
   private markActiveBlock() {

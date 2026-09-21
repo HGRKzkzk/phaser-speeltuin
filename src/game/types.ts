@@ -3,6 +3,13 @@ export type BlockDirection = 'up' | 'left' | 'right'
 export type TargetSide = 'left' | 'right'
 export type GameStatus = 'playing' | 'stage-win' | 'game-over'
 
+export type AffinityCell = {
+  shown: number
+  correct: number
+}
+
+export type AffinityMatrix = Record<TargetSide, Record<BlockColor, AffinityCell>>
+
 export type GameBlock = {
   color: BlockColor
   direction: BlockDirection
@@ -20,6 +27,7 @@ export type GameState = {
   status: GameStatus
   completedPaths: number
   edgeProgress: Record<TargetSide, number>
+  affinity: AffinityMatrix
   path: PathState
 }
 
