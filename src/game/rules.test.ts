@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { gameConfig } from './config'
 import {
-  chooseAdventureOption,
+  classifyHitQuality,
   createGameState,
   createPath,
-  enterAdventure,
+  getTimePressure,
+  getMultiplier,
   getTargetSide,
-  isAdventureDue,
   resolveAttempt,
+  resolveTimePressure,
   startNextLevel,
 } from './rules'
 import { createSeededRandom } from './random'
@@ -15,6 +16,10 @@ import type { GameState } from './types'
 
 function stateWith(overrides: Partial<GameState>): GameState {
   return { ...createGameState(createSeededRandom(17)), ...overrides }
+}
+
+function correctAttempt(state: GameState, atMs = 400, responseMs = 250) {
+  return { ...state.path.blocks[state.path.activeIndex], atMs, responseMs }
 }
 
 describe('levelgebonden zijde', () => {
@@ -51,14 +56,19 @@ describe('invoer en balkvoortgang', () => {
   it('keurt alleen een gelijktijdig juiste kleur en richting goed', () => {
     const initial = createGameState(createSeededRandom(17))
     const activeBlock = initial.path.blocks[0]
-    expect(resolveAttempt(initial, activeBlock).outcome).toBe('correct')
+    expect(resolveAttempt(initial, { ...activeBlock, atMs: 400, responseMs: 250 }).outcome).toBe('correct')
     const wrongColor = activeBlock.color === 'red' ? 'blue' : 'red'
-    expect(resolveAttempt(initial, { color: wrongColor, direction: activeBlock.direction }).outcome).toBe('wrong')
+    expect(resolveAttempt(initial, {
+      color: wrongColor,
+      direction: activeBlock.direction,
+      atMs: 400,
+      responseMs: 250,
+    }).outcome).toBe('wrong')
   })
 
   it('beweegt de balk aan de actieve zijde naar binnen bij een goed blok', () => {
     const initial = createGameState(createSeededRandom(17))
-    const result = resolveAttempt(initial, initial.path.blocks[0])
+    const result = resolveAttempt(initial, correctAttempt(initial))
     expect(result.state.edgeProgress.right).toBe(1)
     expect(result.state.edgeProgress.left).toBe(0)
   })
@@ -69,7 +79,7 @@ describe('invoer en balkvoortgang', () => {
       edgeProgress: { left: 0, right: gameConfig.progressForStageWin - 1 },
       path: initial.path,
     })
-    const result = resolveAttempt(state, state.path.blocks[0])
+    const result = resolveAttempt(state, correctAttempt(state, 5_000))
     expect(result.outcome).toBe('stage-win')
   })
 
@@ -79,7 +89,7 @@ describe('invoer en balkvoortgang', () => {
       edgeProgress: { left: 0, right: -(gameConfig.mistakesFromStartToGameOver - 1) },
       path: initial.path,
     })
-    const result = resolveAttempt(state, { color: null, direction: 'up' })
+    const result = resolveAttempt(state, { color: null, direction: 'up', atMs: 400, responseMs: 400 })
     expect(result.outcome).toBe('game-over')
   })
 })
@@ -95,7 +105,7 @@ describe('latente affiniteit', () => {
   it('registreert een correcte treffer in precies één kleur-zijdecel', () => {
     const state = createGameState(createSeededRandom(17))
     const block = state.path.blocks[0]
-    const result = resolveAttempt(state, block)
+    const result = resolveAttempt(state, { ...block, atMs: 400, responseMs: 250 })
     expect(result.state.affinity.right[block.color].correct).toBe(1)
     const otherColor = block.color === 'red' ? 'blue' : 'red'
     expect(result.state.affinity.right[otherColor].correct).toBe(0)
@@ -104,7 +114,7 @@ describe('latente affiniteit', () => {
   it('bewaart affiniteit en score wanneer het volgende level van zijde wisselt', () => {
     const won = stateWith({ score: 42, level: 1, status: 'stage-win' })
     won.affinity.right.red.correct = 9
-    const next = startNextLevel(won, createSeededRandom(17))
+    const next = startNextLevel(won, createSeededRandom(17), 20_000)
     expect(next.score).toBe(42)
     expect(next.level).toBe(2)
     expect(next.path.targetSide).toBe('left')
@@ -113,50 +123,61 @@ describe('latente affiniteit', () => {
   })
 })
 
-describe('tekstavontuur', () => {
-  it('trekt bij het begin van een spel een geldige levelafstand', () => {
-    const state = createGameState(createSeededRandom(17))
-    expect(gameConfig.adventureLevelGapChoices).toContain(state.levelsUntilAdventure)
-    expect(state.adventure).toBeNull()
-    expect(state.adventureLog).toHaveLength(0)
+describe('tijd, kwaliteit en combo', () => {
+  it('deelt reactietijden in vier kwaliteitsniveaus in', () => {
+    expect(classifyHitQuality(280)).toBe('perfect')
+    expect(classifyHitQuality(500)).toBe('great')
+    expect(classifyHitQuality(800)).toBe('good')
+    expect(classifyHitQuality(801)).toBe('steady')
   })
 
-  it('telt het aantal levels tot het volgende avontuur af bij een stage win', () => {
-    const initial = createGameState(createSeededRandom(17))
+  it('maakt ×2 na drie snelle opeenvolgende treffers toegankelijk', () => {
+    let state = createGameState(createSeededRandom(17), 0)
+    let thirdScoreDelta = 0
+    for (const atMs of [300, 650, 1_000]) {
+      const result = resolveAttempt(state, correctAttempt(state, atMs, 250))
+      state = result.state
+      thirdScoreDelta = result.scoreDelta
+    }
+    expect(state.combo.streak).toBe(3)
+    expect(state.combo.multiplier).toBe(2)
+    expect(thirdScoreDelta).toBe(
+      (gameConfig.pointsPerBlock + gameConfig.qualityBonusPoints.perfect) * 2,
+    )
+    expect(getMultiplier(15)).toBe(5)
+  })
+
+  it('breekt de combo bij een fout', () => {
+    const initial = createGameState(createSeededRandom(17), 0)
+    const hit = resolveAttempt(initial, correctAttempt(initial, 300, 250)).state
+    const result = resolveAttempt(hit, { color: null, direction: 'up', atMs: 500, responseMs: 200 })
+    expect(result.state.combo).toEqual({ streak: 0, multiplier: 1, lastCorrectAtMs: null })
+  })
+
+  it('geeft bij een snelle stage-clear een afzonderlijke tijdbonus', () => {
+    const initial = createGameState(createSeededRandom(17), 0)
     const state = stateWith({
-      levelsUntilAdventure: 1,
+      levelStartedAtMs: 0,
       edgeProgress: { left: 0, right: gameConfig.progressForStageWin - 1 },
       path: initial.path,
     })
-    const result = resolveAttempt(state, state.path.blocks[0])
+    const result = resolveAttempt(state, correctAttempt(state, 5_000, 250))
     expect(result.outcome).toBe('stage-win')
-    expect(result.state.levelsUntilAdventure).toBe(0)
-    expect(isAdventureDue(result.state)).toBe(true)
+    expect(result.timeBonus).toBe(13)
+    expect(result.scoreDelta).toBeGreaterThan(result.timeBonus)
   })
 
-  it('start een tekstavontuur met een scenario en een nieuwe levelafstand', () => {
-    const due = stateWith({ levelsUntilAdventure: 0, status: 'stage-win' })
-    const adventureState = enterAdventure(due, createSeededRandom(5))
-    expect(adventureState.status).toBe('adventure')
-    expect(adventureState.adventure?.scenario.choices.length).toBeGreaterThanOrEqual(2)
-    expect(gameConfig.adventureLevelGapChoices).toContain(adventureState.levelsUntilAdventure)
+  it('laat de tijdsdruk lineair van buitenrand naar midden lopen', () => {
+    const state = createGameState(createSeededRandom(17), 1_000)
+    expect(getTimePressure(state, 1_000)).toBe(0)
+    expect(getTimePressure(state, 1_000 + gameConfig.levelTimeLimitMs / 2)).toBe(0.5)
+    expect(getTimePressure(state, 1_000 + gameConfig.levelTimeLimitMs)).toBe(1)
   })
 
-  it('legt de gemaakte keuze vast en gaat direct verder met het volgende level', () => {
-    const due = stateWith({ levelsUntilAdventure: 0, status: 'stage-win', score: 12, level: 3 })
-    const adventureState = enterAdventure(due, createSeededRandom(5))
-    const scenario = adventureState.adventure!.scenario
-    const next = chooseAdventureOption(adventureState, 0, createSeededRandom(9))
-
-    expect(next.status).toBe('playing')
-    expect(next.level).toBe(4)
-    expect(next.score).toBe(12)
-    expect(next.adventure).toBeNull()
-    expect(next.adventureLog).toEqual([{ scenarioId: scenario.id, choiceId: scenario.choices[0].id }])
-  })
-
-  it('weigert een keuze buiten een tekstavontuur', () => {
-    const state = createGameState(createSeededRandom(17))
-    expect(() => chooseAdventureOption(state, 0)).toThrow()
+  it('geeft game over wanneer de rode tijdslijn het midden bereikt', () => {
+    const state = createGameState(createSeededRandom(17), 1_000)
+    const result = resolveTimePressure(state, 1_000 + gameConfig.levelTimeLimitMs)
+    expect(result.outcome).toBe('game-over')
+    expect(result.state.status).toBe('game-over')
   })
 })
