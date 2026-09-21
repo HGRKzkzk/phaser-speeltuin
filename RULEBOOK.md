@@ -26,8 +26,10 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 ## Balken, stage win en game over
 
 - De linker- en rechterbalk bewaren onafhankelijk hun positie binnen het level.
-- Ieder level heeft één actieve zijde; alleen de balk aan die zijde beweegt.
-- Wanneer een balk de middenbalk raakt, is het level gewonnen.
+- Ieder level heeft één actieve zijde; de balk aan die zijde is wit en reageert op de invoer van de speler.
+- De balk aan de andere zijde is rood en beweegt uitsluitend door het verstrijken van tijd onafgebroken naar het midden.
+- Wanneer de witte actieve balk de middenbalk raakt, is het level gewonnen.
+- Wanneer de rode tijdsbalk de middenbalk raakt, is het game over.
 - Bij een stage win blijft de totaalscore bewaard en begint het volgende level met beide balken op hun beginpositie.
 - Het volgende level gebruikt de andere zijde en de bijbehorende horizontale richting.
 - Wanneer een balk de buitenrand raakt, is het game over.
@@ -65,11 +67,24 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 
 ## Puntentelling
 
-- Juist blok: 1 punt.
+- Een juist blok heeft 1 basispunt.
+- De reactietijd bepaalt een kwaliteitsbonus; de actieve multiplier vermenigvuldigt basispunt en kwaliteitsbonus.
 - Pad voltooid: 3 bonuspunten.
 - Verkeerde combinatie: 1 punt eraf.
 - Een score kan nooit lager worden dan nul.
 - Alleen een juist blok verplaatst een balk naar binnen; de padbonus veroorzaakt geen extra balkstappen.
+
+## Tijd, kwaliteit en combo
+
+- Ieder actief blok krijgt een eigen reactietijd vanaf het moment waarop het actief wordt.
+- De kwaliteitsniveaus zijn `STEADY`, `GOOD`, `GREAT` en `PERFECT`.
+- Snelle opeenvolgende goede treffers bouwen een combo op.
+- De multiplier wordt ×2 na 3 treffers, ×3 na 6, ×4 na 10 en ×5 na 15.
+- Meer dan 900 milliseconden tussen twee goede treffers begint een nieuwe combo.
+- Een fout verbreekt de combo onmiddellijk.
+- De rode balk heeft 18 seconden nodig om het midden te bereiken; diezelfde grens bepaalt de tijdbonus bij een eerdere stage-win.
+- Multiplier en kwaliteit beïnvloeden alleen de score; iedere goede treffer blijft precies één balkstap waard.
+- Visuele effecten mogen met de multiplier meegroeien, maar nooit de leesbaarheid van het actieve blok aantasten.
 
 ## Invarianten
 
@@ -80,6 +95,8 @@ Deze regels mogen niet bij toeval veranderen tijdens visueel of technisch onderh
 - Een horizontale richting wijst altijd naar de actieve zijde.
 - Binnen één level verandert de actieve zijde niet.
 - Score en balkposities worden door de regelkern bepaald, niet door animaties.
+- Reactietijd wordt door de scène gemeten, maar kwaliteit, combo, multiplier en punten worden door de regelkern bepaald.
+- De scène tekent de rode balk op basis van de verstreken tijd; de regelkern bepaalt wanneer die tijd game over veroorzaakt.
 - Een volgend level bewaart de score; een nieuw spel wist de score.
 - Affiniteit en aanbod worden door de regelkern geregistreerd, niet door de presentatie.
 - Tijdens een tekstavontuur wijst de keuzewijzer altijd op precies één keuze.
