@@ -6,18 +6,18 @@ De demo tekent alles met code, dus je hoeft geen afbeeldingen of andere assets t
 
 ## Spelregels
 
-Een ronde duurt 17 seconden. Speel vanaf het midden zeven willekeurige blokken weg om de actieve rand te bereiken:
+Speel vanaf het midden zeven willekeurige blokken per pad weg:
 
 - houd `A` vast voor een rood blok of `D` voor een blauw blok;
 - druk tegelijk op de richting van het actieve blok;
 - de eerste drie reeksen gebruiken `↑` en `→`, de volgende drie `↑` en `←`; daarna wisselt dit opnieuw;
 - een goed blok levert 1 punt op;
-- de rand bereiken levert 3 bonuspunten op;
+- een voltooid pad levert 3 bonuspunten op;
 - een verkeerde combinatie kost 1 punt, tot een minimum van 0.
 
-Na afloop druk je op de spatiebalk om onmiddellijk een nieuwe ronde te beginnen. Je beste score wordt lokaal in de browser bewaard.
+Een goed blok beweegt de gloeiende balk aan de actieve zijde naar het midden. Een fout beweegt die balk naar de buitenrand. Raakt een balk het midden, dan win je het level en neem je de score mee naar het volgende level. Raakt een balk de buitenrand, dan is het game over. Met de spatiebalk begin je opnieuw; je beste score wordt lokaal bewaard.
 
-Rood en blauw bepalen alleen de kleur, niet de speelrichting. Bij het vasthouden van `A` of `D` krijgt het hele speelveld een subtiele gloed in de gekozen kleur. Het aantal reeksen voor een richtingswissel staat bovenaan `GameScene.ts` in `DIRECTION_SWITCH_EVERY`.
+Rood en blauw bepalen alleen de kleur, niet de speelrichting. Bij het vasthouden van `A` of `D` krijgt het hele speelveld een subtiele gloed in de gekozen kleur. Het aantal paden voor een richtingswissel staat in `src/game/config.ts`.
 
 ## Op je Chromebook installeren
 
@@ -57,7 +57,7 @@ npm run dev
 - `src/game/config.ts`: alle afstelbare getallen.
 - `src/game/rules.ts`: de spelregels zonder Phaser of weergavecode.
 - `src/game/types.ts`: de gedeelde begrippen als TypeScript-types.
-- `src/scenes/GameScene.ts`: toetsen, tijd, animaties en weergave.
+- `src/scenes/GameScene.ts`: toetsen, animaties en weergave.
 - `src/main.ts`: de algemene Phaser-instellingen.
 - `src/style.css`: de pagina rondom het spel.
 
@@ -69,7 +69,7 @@ Pas tempo, score of padlengte aan in `config.ts`. Pas een fundamentele spelregel
 npm test
 ```
 
-De tests bewaken de puntentelling, de onafhankelijkheid van kleur en richting en het wisselen van de richtingsfase.
+De tests bewaken de puntentelling, balkvoortgang, levelovergangen, kleur/richting en richtingsfasen.
 
 ## Productiebuild controleren
 
