@@ -1,23 +1,20 @@
 import Phaser from 'phaser'
 import { gameConfig } from '../game/config'
-import { createRoundState, resolveAttempt } from '../game/rules'
-import type { BlockColor, BlockDirection, GameBlock, GameState } from '../game/types'
+import { createGameState, resolveAttempt, startNextLevel } from '../game/rules'
+import type { BlockColor, BlockDirection, GameBlock, GameState, TargetSide } from '../game/types'
 
 type BlockView = {
   block: GameBlock
   view: Phaser.GameObjects.Container
 }
 
-const COLOR_KEYS: Record<BlockColor, string> = {
-  red: 'A',
-  blue: 'D',
-}
+const COLOR_KEYS: Record<BlockColor, string> = { red: 'A', blue: 'D' }
+const BAR_START_X: Record<TargetSide, number> = { left: 92, right: 708 }
+const CENTER_X = 400
 
 export class GameScene extends Phaser.Scene {
-  private state: GameState = createRoundState()
+  private state: GameState = createGameState()
   private blockViews: BlockView[] = []
-  private timeLeft: number = gameConfig.roundDurationSeconds
-  private roundIsOver = false
   private inputIsLocked = false
 
   private redKey!: Phaser.Input.Keyboard.Key
@@ -28,13 +25,12 @@ export class GameScene extends Phaser.Scene {
   private spaceKey!: Phaser.Input.Keyboard.Key
 
   private scoreText!: Phaser.GameObjects.Text
-  private timerText!: Phaser.GameObjects.Text
+  private levelText!: Phaser.GameObjects.Text
   private sideText!: Phaser.GameObjects.Text
   private feedbackText!: Phaser.GameObjects.Text
-  private hintText!: Phaser.GameObjects.Text
-  private overlay!: Phaser.GameObjects.Container
+  private overlay?: Phaser.GameObjects.Container
   private colorWash!: Phaser.GameObjects.Rectangle
-  private roundTimer?: Phaser.Time.TimerEvent
+  private progressBars!: Record<TargetSide, Phaser.GameObjects.Container>
 
   constructor() {
     super('game')
@@ -47,13 +43,17 @@ export class GameScene extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor('#0b1020')
     this.drawArena()
+    this.progressBars = {
+      left: this.createProgressBar('left'),
+      right: this.createProgressBar('right'),
+    }
     this.colorWash = this.add.rectangle(400, 250, 800, 500, 0xffffff, 0).setDepth(10)
 
     this.scoreText = this.addText(24, 22, 'PUNTEN  0', 22).setOrigin(0)
-    this.timerText = this.addText(776, 22, gameConfig.roundDurationSeconds.toFixed(1), 28).setOrigin(1, 0)
+    this.levelText = this.addText(776, 22, 'LEVEL  1', 22).setOrigin(1, 0)
     this.sideText = this.addText(400, 88, '', 22).setOrigin(0.5)
     this.feedbackText = this.addText(400, 400, '', 22).setOrigin(0.5)
-    this.hintText = this.addText(400, 464, 'Houd A = ROOD of D = BLAUW vast · druk daarna de pijl', 17, '#94a3b8').setOrigin(0.5)
+    this.addText(400, 464, 'Houd A = ROOD of D = BLAUW vast · druk daarna de pijl', 17, '#94a3b8').setOrigin(0.5)
 
     this.redKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A)
     this.blueKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)
@@ -62,21 +62,19 @@ export class GameScene extends Phaser.Scene {
     this.rightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT)
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
 
-    this.startRound()
+    this.startGame()
   }
 
   update() {
-    if (this.roundIsOver) {
-      if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
-        this.startRound()
-      }
+    if (this.state.status === 'game-over') {
+      if (this.overlay && Phaser.Input.Keyboard.JustDown(this.spaceKey)) this.startGame()
       return
     }
 
     const heldColor = this.getHeldColor()
     this.updateColorWash(heldColor)
 
-    if (this.inputIsLocked) return
+    if (this.inputIsLocked || this.state.status !== 'playing') return
 
     this.updateActiveOutline(heldColor)
 
@@ -89,38 +87,16 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private startRound() {
+  private startGame() {
     this.overlay?.destroy(true)
-    this.clearBlockViews()
-    this.roundTimer?.remove()
-
-    this.state = createRoundState()
-    this.timeLeft = gameConfig.roundDurationSeconds
-    this.roundIsOver = false
+    this.state = createGameState()
     this.inputIsLocked = false
     this.scoreText.setText('PUNTEN  0')
-    this.timerText.setText(this.timeLeft.toFixed(1)).setColor('#f8fafc')
+    this.levelText.setText('LEVEL  1')
     this.feedbackText.setText('')
     this.colorWash.setAlpha(0)
-    this.hintText.setVisible(true)
+    this.syncProgressBars()
     this.renderPath()
-
-    this.roundTimer = this.time.addEvent({
-      delay: 100,
-      repeat: gameConfig.roundDurationSeconds * 10 - 1,
-      callback: () => {
-        this.timeLeft = Math.max(0, this.timeLeft - 0.1)
-        this.timerText.setText(this.timeLeft.toFixed(1))
-
-        if (this.timeLeft <= 5) {
-          this.timerText.setColor('#fb7185')
-        }
-
-        if (this.timeLeft <= 0) {
-          this.endRound()
-        }
-      },
-    })
   }
 
   private renderPath() {
@@ -146,22 +122,45 @@ export class GameScene extends Phaser.Scene {
     const arrowSymbol = block.direction === 'up' ? '↑' : block.direction === 'left' ? '←' : '→'
     const arrow = this.addText(0, 0, arrowSymbol, 31).setOrigin(0.5)
     const key = this.addText(0, 23, COLOR_KEYS[block.color], 11, '#ffffff').setOrigin(0.5).setAlpha(0.8)
-
     return this.add.container(x, y, [rectangle, arrow, key])
   }
 
+  private createProgressBar(side: TargetSide) {
+    const glow = this.add.rectangle(0, 0, 24, 198, 0xe2e8f0, 0.12)
+    const halo = this.add.rectangle(0, 0, 14, 194, 0xf8fafc, 0.28)
+    const core = this.add.rectangle(0, 0, 7, 190, 0xffffff, 0.96)
+    const bar = this.add.container(BAR_START_X[side], 250, [glow, halo, core]).setDepth(5)
+
+    this.tweens.add({
+      targets: [glow, halo],
+      alpha: { from: 0.12, to: 0.36 },
+      duration: 700,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.InOut',
+    })
+
+    return bar
+  }
+
   private tryBlock(direction: BlockDirection, color: BlockColor | null) {
-    const activeIndex = this.state.path.activeIndex
-    const activeView = this.blockViews[activeIndex]
+    const activeSide = this.state.path.targetSide
+    const activeView = this.blockViews[this.state.path.activeIndex]
     if (!activeView) return
 
     const resolution = resolveAttempt(this.state, { color, direction })
     this.state = resolution.state
     this.scoreText.setText(`PUNTEN  ${this.state.score}`)
+    this.moveProgressBar(activeSide)
 
-    if (resolution.outcome === 'wrong') {
+    if (resolution.outcome === 'wrong' || resolution.outcome === 'game-over') {
       this.showFeedback(color ? 'MIS  −1' : 'HOUD EERST EEN KLEUR VAST', '#fda4af')
       this.cameras.main.shake(55, 0.004)
+
+      if (resolution.outcome === 'game-over') {
+        this.inputIsLocked = true
+        this.time.delayedCall(220, () => this.showGameOver())
+      }
       return
     }
 
@@ -173,11 +172,15 @@ export class GameScene extends Phaser.Scene {
       onComplete: () => activeView.view.setVisible(false),
     })
 
-    if (resolution.outcome === 'path-complete') {
+    if (resolution.outcome === 'stage-win') {
       this.inputIsLocked = true
-      this.showFeedback(`RAND BEREIKT  +${gameConfig.pointsPerCompletedPath}`, '#fde68a')
+      this.showFeedback('MIDDEN BEREIKT', '#fde68a')
+      this.time.delayedCall(260, () => this.showStageWin())
+    } else if (resolution.outcome === 'path-complete') {
+      this.inputIsLocked = true
+      this.showFeedback(`PAD KLAAR  +${gameConfig.pointsPerCompletedPath}`, '#fde68a')
       this.time.delayedCall(160, () => {
-        if (!this.roundIsOver) {
+        if (this.state.status === 'playing') {
           this.renderPath()
           this.inputIsLocked = false
         }
@@ -186,6 +189,63 @@ export class GameScene extends Phaser.Scene {
       this.showFeedback(`+${gameConfig.pointsPerBlock}`, '#86efac')
       this.markActiveBlock()
     }
+  }
+
+  private showStageWin() {
+    const shade = this.add.rectangle(400, 250, 800, 500, 0x070b14, 0.88)
+    const title = this.addText(400, 185, `LEVEL ${this.state.level} KLAAR`, 40, '#fde68a').setOrigin(0.5)
+    const score = this.addText(400, 255, `${this.state.score} punten`, 28, '#f8fafc').setOrigin(0.5)
+    const next = this.addText(400, 320, 'VOLGENDE LEVEL', 18, '#86efac').setOrigin(0.5)
+    this.overlay = this.add.container(0, 0, [shade, title, score, next]).setDepth(30)
+
+    this.time.delayedCall(950, () => {
+      this.overlay?.destroy(true)
+      this.overlay = undefined
+      this.state = startNextLevel(this.state)
+      this.levelText.setText(`LEVEL  ${this.state.level}`)
+      this.syncProgressBars(260)
+      this.renderPath()
+      this.time.delayedCall(280, () => {
+        this.inputIsLocked = false
+      })
+    })
+  }
+
+  private showGameOver() {
+    const storedBest = Number(localStorage.getItem('phaser-speeltuin-best') ?? 0)
+    const best = Math.max(storedBest, this.state.score)
+    localStorage.setItem('phaser-speeltuin-best', String(best))
+    this.colorWash.setAlpha(0)
+
+    const shade = this.add.rectangle(400, 250, 800, 500, 0x070b14, 0.94)
+    const title = this.addText(400, 145, 'GAME OVER', 48, '#fb7185').setOrigin(0.5)
+    const level = this.addText(400, 215, `Level ${this.state.level}`, 22, '#cbd5e1').setOrigin(0.5)
+    const finalScore = this.addText(400, 260, `${this.state.score} punten`, 32, '#fde68a').setOrigin(0.5)
+    const bestScore = this.addText(400, 305, `Beste: ${best}`, 18, '#94a3b8').setOrigin(0.5)
+    const restart = this.addText(400, 365, 'Druk op SPATIE om opnieuw te beginnen', 19, '#86efac').setOrigin(0.5)
+    this.overlay = this.add.container(0, 0, [shade, title, level, finalScore, bestScore, restart]).setDepth(30)
+  }
+
+  private moveProgressBar(side: TargetSide) {
+    const x = this.getBarX(side)
+    this.tweens.killTweensOf(this.progressBars[side])
+    this.tweens.add({ targets: this.progressBars[side], x, duration: 150, ease: 'Back.Out' })
+  }
+
+  private syncProgressBars(duration = 0) {
+    ;(['left', 'right'] as TargetSide[]).forEach((side) => {
+      this.tweens.killTweensOf(this.progressBars[side])
+      if (duration === 0) {
+        this.progressBars[side].setX(this.getBarX(side))
+      } else {
+        this.tweens.add({ targets: this.progressBars[side], x: this.getBarX(side), duration, ease: 'Sine.Out' })
+      }
+    })
+  }
+
+  private getBarX(side: TargetSide) {
+    const distance = this.state.edgeProgress[side] * gameConfig.barMovementPixels
+    return side === 'left' ? BAR_START_X.left + distance : BAR_START_X.right - distance
   }
 
   private markActiveBlock() {
@@ -205,7 +265,6 @@ export class GameScene extends Phaser.Scene {
   private updateActiveOutline(heldColor: BlockColor | null) {
     const activeView = this.blockViews[this.state.path.activeIndex]
     if (!activeView) return
-
     const outline = activeView.view.first as Phaser.GameObjects.Rectangle
     const outlineColor = heldColor === 'red' ? 0xff2d55 : heldColor === 'blue' ? 0x1687ff : 0xffffff
     outline.setStrokeStyle(heldColor === activeView.block.color ? 6 : 3, outlineColor, heldColor ? 1 : 0.22)
@@ -227,29 +286,6 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: this.feedbackText, alpha: 0, duration: 420, delay: 120 })
   }
 
-  private endRound() {
-    if (this.roundIsOver) return
-
-    this.roundIsOver = true
-    this.inputIsLocked = true
-    this.roundTimer?.remove()
-    this.colorWash.setAlpha(0)
-    this.timerText.setText('0.0')
-    this.hintText.setVisible(false)
-
-    const storedBest = Number(localStorage.getItem('phaser-speeltuin-best') ?? 0)
-    const best = Math.max(storedBest, this.state.score)
-    localStorage.setItem('phaser-speeltuin-best', String(best))
-
-    const shade = this.add.rectangle(400, 250, 800, 500, 0x070b14, 0.94)
-    const title = this.addText(400, 155, 'TIJD!', 48, '#f8fafc').setOrigin(0.5)
-    const finalScore = this.addText(400, 230, `${this.state.score} punten`, 34, '#fde68a').setOrigin(0.5)
-    const bestScore = this.addText(400, 282, `Beste: ${best}`, 20, '#94a3b8').setOrigin(0.5)
-    const restart = this.addText(400, 350, `Druk op SPATIE voor nog ${gameConfig.roundDurationSeconds} seconden`, 20, '#86efac').setOrigin(0.5)
-
-    this.overlay = this.add.container(0, 0, [shade, title, finalScore, bestScore, restart]).setDepth(30)
-  }
-
   private clearBlockViews() {
     this.blockViews.forEach(({ view }) => view.destroy(true))
     this.blockViews = []
@@ -257,10 +293,10 @@ export class GameScene extends Phaser.Scene {
 
   private drawArena() {
     this.add.rectangle(400, 250, 760, 150, 0x111a2e).setStrokeStyle(2, 0x334155)
-    this.add.rectangle(400, 250, 8, 190, 0xf8fafc, 0.85)
-    this.addText(400, 362, 'START', 13, '#64748b').setOrigin(0.5)
-    this.add.rectangle(22, 250, 8, 190, 0xf8fafc, 0.35)
-    this.add.rectangle(778, 250, 8, 190, 0xf8fafc, 0.35)
+    this.add.rectangle(CENTER_X, 250, 8, 190, 0xf8fafc, 0.85)
+    this.addText(CENTER_X, 362, 'STAGE WIN', 13, '#64748b').setOrigin(0.5)
+    this.add.rectangle(20, 250, 2, 190, 0xfb7185, 0.45)
+    this.add.rectangle(780, 250, 2, 190, 0xfb7185, 0.45)
   }
 
   private addText(x: number, y: number, text: string, size: number, color = '#f8fafc') {
