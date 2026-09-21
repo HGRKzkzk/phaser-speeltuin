@@ -33,8 +33,8 @@ export function getMultiplier(streak: number) {
 }
 
 export function getTimePressure(state: GameState, nowMs: number) {
-  const elapsedMs = Math.max(0, nowMs - state.levelStartedAtMs)
-  return Math.min(1, elapsedMs / gameConfig.levelTimeLimitMs)
+  const effectiveElapsedMs = Math.max(0, nowMs - state.levelStartedAtMs - state.timeReliefMs)
+  return Math.min(1, effectiveElapsedMs / gameConfig.levelTimeLimitMs)
 }
 
 export function resolveTimePressure(state: GameState, nowMs: number): TimePressureResolution {
@@ -104,6 +104,7 @@ export function createGameState(random: RandomSource = Math.random, nowMs = 0): 
     affinity: recordShown(createEmptyAffinity(), path),
     combo: { streak: 0, multiplier: 1, lastCorrectAtMs: null },
     levelStartedAtMs: nowMs,
+    timeReliefMs: 0,
     path,
     levelsUntilAdventure: pickAdventureGap(random),
     adventure: null,
@@ -123,6 +124,7 @@ export function startNextLevel(state: GameState, random: RandomSource = Math.ran
     affinity: recordShown(state.affinity, path),
     combo: { streak: 0, multiplier: 1, lastCorrectAtMs: null },
     levelStartedAtMs: nowMs,
+    timeReliefMs: 0,
     path,
     levelsUntilAdventure: state.levelsUntilAdventure,
     adventure: null,
@@ -208,9 +210,10 @@ export function resolveAttempt(
   const multiplier = getMultiplier(streak)
   const hitPoints = (gameConfig.pointsPerBlock + gameConfig.qualityBonusPoints[quality]) * multiplier
   const pathBonus = pathIsComplete ? gameConfig.pointsPerCompletedPath : 0
-  const elapsedMs = attempt.atMs - state.levelStartedAtMs
+  const timeReliefMs = state.timeReliefMs + gameConfig.timeReliefPerCorrectMs
+  const effectiveElapsedMs = Math.max(0, attempt.atMs - state.levelStartedAtMs - timeReliefMs)
   const timeBonus = progress >= gameConfig.progressForStageWin
-    ? Math.max(0, Math.ceil((gameConfig.levelTimeLimitMs - elapsedMs) / 1000))
+    ? Math.max(0, Math.ceil((gameConfig.levelTimeLimitMs - effectiveElapsedMs) / 1000))
     : 0
   const scoreDelta = hitPoints + pathBonus + timeBonus
   const score = state.score + scoreDelta
@@ -232,6 +235,7 @@ export function resolveAttempt(
         affinity,
         levelsUntilAdventure: Math.max(0, state.levelsUntilAdventure - 1),
         combo,
+        timeReliefMs,
       },
     }
   }
@@ -248,6 +252,7 @@ export function resolveAttempt(
         edgeProgress: { ...state.edgeProgress, [activeSide]: progress },
         affinity,
         combo,
+        timeReliefMs,
         path: { ...state.path, activeIndex },
       },
     }
@@ -266,6 +271,7 @@ export function resolveAttempt(
       edgeProgress: { ...state.edgeProgress, [activeSide]: progress },
       affinity: recordShown(affinity, path),
       combo,
+      timeReliefMs,
       path,
     },
   }
