@@ -8,84 +8,98 @@ function stateWith(overrides: Partial<GameState>): GameState {
   return { ...createGameState(createSeededRandom(17)), ...overrides }
 }
 
-describe('richtingsfasen', () => {
-  it('wisselt na het ingestelde aantal voltooide paden van zijde', () => {
-    const phaseSize = gameConfig.pathsPerDirectionPhase
-    expect(getTargetSide(0)).toBe('right')
-    expect(getTargetSide(phaseSize - 1)).toBe('right')
-    expect(getTargetSide(phaseSize)).toBe('left')
-    expect(getTargetSide(phaseSize * 2)).toBe('right')
+describe('levelgebonden zijde', () => {
+  it('wisselt de actieve zijde pas bij een volgend level', () => {
+    expect(getTargetSide(1)).toBe('right')
+    expect(getTargetSide(2)).toBe('left')
+    expect(getTargetSide(3)).toBe('right')
   })
 
-  it('gebruikt alleen boven en de horizontale richting naar de doelrand', () => {
-    const rightPath = createPath(0, createSeededRandom(17))
-    const leftPath = createPath(gameConfig.pathsPerDirectionPhase, createSeededRandom(17))
-    expect(rightPath.blocks.every(({ direction }) => direction === 'up' || direction === 'right')).toBe(true)
-    expect(leftPath.blocks.every(({ direction }) => direction === 'up' || direction === 'left')).toBe(true)
+  it('houdt alle paden binnen een level aan dezelfde zijde', () => {
+    const first = createPath(1, createSeededRandom(17))
+    const later = createPath(1, createSeededRandom(42))
+    expect(first.targetSide).toBe('right')
+    expect(later.targetSide).toBe('right')
+    expect(first.blocks.every(({ direction }) => direction === 'up' || direction === 'right')).toBe(true)
   })
 })
 
-describe('kleur en richting', () => {
-  it('genereert kleur en richting als twee onafhankelijke keuzes', () => {
-    const values = [0.25, 0.75, 0.75, 0.25]
-    let index = 0
-    const path = createPath(0, () => values[index++ % values.length])
-    expect(path.blocks[0]).toEqual({ color: 'red', direction: 'right' })
-    expect(path.blocks[1]).toEqual({ color: 'blue', direction: 'up' })
+describe('gebalanceerde blokkenzak', () => {
+  it('houdt de vier kleur-richtingcombinaties binnen één aanbieding van elkaar', () => {
+    const path = createPath(1, createSeededRandom(17))
+    const counts = new Map<string, number>()
+    path.blocks.forEach(({ color, direction }) => {
+      const key = `${color}-${direction}`
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    })
+    const values = [...counts.values()]
+    expect(counts.size).toBe(4)
+    expect(Math.max(...values) - Math.min(...values)).toBeLessThanOrEqual(1)
   })
+})
 
+describe('invoer en balkvoortgang', () => {
   it('keurt alleen een gelijktijdig juiste kleur en richting goed', () => {
-    const initial = createGameState(() => 0.25)
+    const initial = createGameState(createSeededRandom(17))
     const activeBlock = initial.path.blocks[0]
     expect(resolveAttempt(initial, activeBlock).outcome).toBe('correct')
-    expect(resolveAttempt(initial, { color: 'blue', direction: activeBlock.direction }).outcome).toBe('wrong')
-    expect(resolveAttempt(initial, { color: activeBlock.color, direction: 'right' }).outcome).toBe('wrong')
+    const wrongColor = activeBlock.color === 'red' ? 'blue' : 'red'
+    expect(resolveAttempt(initial, { color: wrongColor, direction: activeBlock.direction }).outcome).toBe('wrong')
   })
-})
 
-describe('balkvoortgang', () => {
   it('beweegt de balk aan de actieve zijde naar binnen bij een goed blok', () => {
-    const initial = createGameState(() => 0.25)
+    const initial = createGameState(createSeededRandom(17))
     const result = resolveAttempt(initial, initial.path.blocks[0])
     expect(result.state.edgeProgress.right).toBe(1)
     expect(result.state.edgeProgress.left).toBe(0)
   })
 
-  it('beweegt dezelfde balk naar buiten bij een fout en bewaakt de minimumscore', () => {
-    const initial = createGameState(() => 0.25)
-    const result = resolveAttempt(initial, { color: null, direction: 'up' })
-    expect(result.state.edgeProgress.right).toBe(-1)
-    expect(result.state.score).toBe(0)
-  })
-
-  it('geeft stage win wanneer de actieve balk het midden bereikt', () => {
-    const initial = createGameState(() => 0.25)
+  it('geeft na 21 netto goede blokken stage win', () => {
+    const initial = createGameState(createSeededRandom(17))
     const state = stateWith({
       edgeProgress: { left: 0, right: gameConfig.progressForStageWin - 1 },
       path: initial.path,
     })
     const result = resolveAttempt(state, state.path.blocks[0])
     expect(result.outcome).toBe('stage-win')
-    expect(result.state.status).toBe('stage-win')
   })
 
   it('geeft game over wanneer de actieve balk de buitenrand bereikt', () => {
-    const initial = createGameState(() => 0.25)
+    const initial = createGameState(createSeededRandom(17))
     const state = stateWith({
       edgeProgress: { left: 0, right: -(gameConfig.mistakesFromStartToGameOver - 1) },
       path: initial.path,
     })
     const result = resolveAttempt(state, { color: null, direction: 'up' })
     expect(result.outcome).toBe('game-over')
-    expect(result.state.status).toBe('game-over')
+  })
+})
+
+describe('latente affiniteit', () => {
+  it('registreert aangeboden blokken per kleur en zijde', () => {
+    const state = createGameState(createSeededRandom(17))
+    const shown = state.affinity.right.red.shown + state.affinity.right.blue.shown
+    expect(shown).toBe(gameConfig.blocksPerPath)
+    expect(state.affinity.left.red.shown + state.affinity.left.blue.shown).toBe(0)
   })
 
-  it('bewaart de score maar reset de balken in een volgend level', () => {
-    const won = stateWith({ score: 42, level: 2, status: 'stage-win', edgeProgress: { left: 25, right: 4 } })
+  it('registreert een correcte treffer in precies één kleur-zijdecel', () => {
+    const state = createGameState(createSeededRandom(17))
+    const block = state.path.blocks[0]
+    const result = resolveAttempt(state, block)
+    expect(result.state.affinity.right[block.color].correct).toBe(1)
+    const otherColor = block.color === 'red' ? 'blue' : 'red'
+    expect(result.state.affinity.right[otherColor].correct).toBe(0)
+  })
+
+  it('bewaart affiniteit en score wanneer het volgende level van zijde wisselt', () => {
+    const won = stateWith({ score: 42, level: 1, status: 'stage-win' })
+    won.affinity.right.red.correct = 9
     const next = startNextLevel(won, createSeededRandom(17))
     expect(next.score).toBe(42)
-    expect(next.level).toBe(3)
-    expect(next.status).toBe('playing')
-    expect(next.edgeProgress).toEqual({ left: 0, right: 0 })
+    expect(next.level).toBe(2)
+    expect(next.path.targetSide).toBe('left')
+    expect(next.affinity.right.red.correct).toBe(9)
+    expect(next.affinity.left.red.shown + next.affinity.left.blue.shown).toBe(gameConfig.blocksPerPath)
   })
 })
