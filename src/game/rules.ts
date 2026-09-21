@@ -1,6 +1,7 @@
 import { gameConfig } from './config'
-import { pickAdventureScenario } from './adventures'
+import { pickAdventureStory } from './adventures'
 import type {
+  AdventureAlignment,
   AffinityMatrix,
   AttemptResolution,
   BlockColor,
@@ -93,6 +94,14 @@ function pickAdventureGap(random: RandomSource): number {
   return choices[Math.floor(random() * choices.length)]
 }
 
+function isDefiantChoice(priorAlignments: AdventureAlignment[], finalAlignment: AdventureAlignment): boolean {
+  const boldCount = priorAlignments.filter((alignment) => alignment === 'bold').length
+  const waryCount = priorAlignments.length - boldCount
+  if (boldCount === waryCount) return false
+  const establishedLeaning: AdventureAlignment = boldCount > waryCount ? 'bold' : 'wary'
+  return finalAlignment !== establishedLeaning
+}
+
 export function createGameState(random: RandomSource = Math.random, nowMs = 0): GameState {
   const path = createPath(1, random)
   return {
@@ -137,10 +146,11 @@ export function isAdventureDue(state: GameState): boolean {
 }
 
 export function enterAdventure(state: GameState, random: RandomSource = Math.random): GameState {
+  const story = pickAdventureStory(random)
   return {
     ...state,
     status: 'adventure',
-    adventure: { scenario: pickAdventureScenario(random) },
+    adventure: { story, fragmentId: story.entryFragmentId, priorAlignments: [] },
     levelsUntilAdventure: pickAdventureGap(random),
   }
 }
@@ -155,17 +165,32 @@ export function chooseAdventureOption(
     throw new Error('Een keuze is alleen toegestaan tijdens een tekstavontuur.')
   }
 
-  const choice = state.adventure.scenario.choices[choiceIndex]
+  const { story, fragmentId, priorAlignments } = state.adventure
+  const fragment = story.fragments[fragmentId]
+  const choice = fragment.choices[choiceIndex]
   if (!choice) {
     throw new Error('Ongeldige keuze-index.')
   }
 
   const adventureLog = [
     ...state.adventureLog,
-    { scenarioId: state.adventure.scenario.id, choiceId: choice.id },
+    { adventureId: story.id, fragmentId: fragment.id, choiceId: choice.id, alignment: choice.alignment },
   ]
 
-  return startNextLevel({ ...state, adventure: null, adventureLog }, random, nowMs)
+  if (choice.next !== 'end') {
+    return {
+      ...state,
+      adventure: { story, fragmentId: choice.next, priorAlignments: [...priorAlignments, choice.alignment] },
+      adventureLog,
+    }
+  }
+
+  const bonus = isDefiantChoice(priorAlignments, choice.alignment) ? gameConfig.adventureDefianceBonus : 0
+  return startNextLevel(
+    { ...state, adventure: null, adventureLog, score: state.score + bonus },
+    random,
+    nowMs,
+  )
 }
 
 export function resolveAttempt(
