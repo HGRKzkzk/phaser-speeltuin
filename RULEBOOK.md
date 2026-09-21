@@ -9,8 +9,8 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - **Pad:** de zeven blokken tussen het midden en één schermrand.
 - **Blok:** één onafhankelijke combinatie van een kleur en een richting.
 - **Actief blok:** het enige blok waarop invoer op dat moment betrekking heeft.
-- **Richtingsfase:** drie opeenvolgende paden met dezelfde horizontale richting.
 - **Voortgangsbalk:** de gloeiende balk aan iedere buitenzijde van het speelveld.
+- **Affiniteit:** de blijvende registratie van aangeboden en correct gespeelde blokken per combinatie van zijde en kleur.
 
 ## Kernlus
 
@@ -24,9 +24,10 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 ## Balken, stage win en game over
 
 - De linker- en rechterbalk bewaren onafhankelijk hun positie binnen het level.
-- Alleen de balk aan de zijde van het huidige pad beweegt.
+- Ieder level heeft één actieve zijde; alleen de balk aan die zijde beweegt.
 - Wanneer een balk de middenbalk raakt, is het level gewonnen.
 - Bij een stage win blijft de totaalscore bewaard en begint het volgende level met beide balken op hun beginpositie.
+- Het volgende level gebruikt de andere zijde en de bijbehorende horizontale richting.
 - Wanneer een balk de buitenrand raakt, is het game over.
 - Een volledig nieuw spel begint opnieuw in level 1 met nul punten.
 
@@ -34,11 +35,19 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 
 - De kleuren zijn helder rood en helder blauw.
 - Kleur geeft nooit een richting of schermzijde aan.
-- Kleur en richting worden onafhankelijk van elkaar gekozen.
+- Kleur voorspelt nooit de richting; de vier mogelijke kleur-richtingcombinaties worden per pad zo gelijkmatig mogelijk aangeboden.
 - De kleurinvoer mag als schermbrede verkleuring worden getoond.
-- De eerste richtingsfase gebruikt boven en rechts en beweegt naar de rechterrand.
-- De volgende richtingsfase gebruikt boven en links en beweegt naar de linkerrand.
-- Daarna blijven de twee richtingsfasen elkaar afwisselen.
+- Oneven levels gebruiken boven en rechts en bewegen met de rechterbalk.
+- Even levels gebruiken boven en links en bewegen met de linkerbalk.
+
+## Latente affiniteit
+
+- Vanaf level 1 worden per kleur-zijdecombinatie zowel aangeboden als correct gespeelde blokken bijgehouden.
+- De vier combinaties zijn rood-links, blauw-links, rood-rechts en blauw-rechts.
+- Vier kleine lichtpunten mogen deze opbouw subtiel laten voelen zonder haar al volledig uit te leggen.
+- Affiniteit blijft over levelovergangen heen bewaard en wordt alleen bij een volledig nieuw spel gewist.
+- Affiniteit heeft vooralsnog geen spelmechanisch gevolg; een latere regelwijziging moet dat gevolg expliciet beschrijven.
+- Een latere onthulling mag nieuwe mogelijkheden bieden, maar de speler niet met terugwerkende kracht straffen voor verborgen informatie.
 
 ## Puntentelling
 
@@ -55,10 +64,11 @@ Deze regels mogen niet bij toeval veranderen tijdens visueel of technisch onderh
 - Er is precies één actief blok tijdens het spelen.
 - Alleen een gelijktijdig juiste kleur én richting speelt een blok weg.
 - Een horizontale richting wijst altijd naar de actieve zijde.
-- Binnen één pad verandert de richtingsset niet.
+- Binnen één level verandert de actieve zijde niet.
 - Score en balkposities worden door de regelkern bepaald, niet door animaties.
 - Een volgend level bewaart de score; een nieuw spel wist de score.
+- Affiniteit en aanbod worden door de regelkern geregistreerd, niet door de presentatie.
 
 ## Afstelbare waarden
 
-Getallen zoals padlengte, fasegrootte, punten en het aantal balkstappen tot winst of verlies staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.
+Getallen zoals padlengte, punten en het aantal balkstappen tot winst of verlies staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.
