@@ -6,6 +6,7 @@ export const gameConfig = {
   progressForStageWin: 21,
   mistakesFromStartToGameOver: 6,
   barMovementPixels: 12,
+  adventureLevelGapChoices: [2, 3, 4],
   comboWindowMs: 900,
   levelTimeLimitMs: 18_000,
   qualityThresholdsMs: {
