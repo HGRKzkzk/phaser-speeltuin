@@ -50,6 +50,7 @@ export class GameScene extends Phaser.Scene {
   private blockViews: BlockView[] = []
   private inputIsLocked = false
   private activeSinceMs = 0
+  private pendingTimers: Phaser.Time.TimerEvent[] = []
 
   private redKey!: Phaser.Input.Keyboard.Key
   private blueKey!: Phaser.Input.Keyboard.Key
@@ -152,7 +153,21 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private scheduleOnce(delay: number, callback: () => void): void {
+    const timer = this.time.delayedCall(delay, () => {
+      this.pendingTimers = this.pendingTimers.filter((pending) => pending !== timer)
+      callback()
+    })
+    this.pendingTimers.push(timer)
+  }
+
+  private cancelPendingTimers() {
+    this.pendingTimers.forEach((timer) => timer.remove())
+    this.pendingTimers = []
+  }
+
   private startGame() {
+    this.cancelPendingTimers()
     this.overlay?.destroy(true)
     this.destroyAdventureUI()
     this.state = createGameState(Math.random, this.time.now)
@@ -241,7 +256,7 @@ export class GameScene extends Phaser.Scene {
 
       if (resolution.outcome === 'game-over') {
         this.inputIsLocked = true
-        this.time.delayedCall(220, () => this.showGameOver('BUITENRAND BEREIKT'))
+        this.scheduleOnce(220, () => this.showGameOver('BUITENRAND BEREIKT'))
       }
       return
     }
@@ -264,15 +279,13 @@ export class GameScene extends Phaser.Scene {
     if (resolution.outcome === 'stage-win') {
       this.inputIsLocked = true
       this.showFeedback(`MIDDEN BEREIKT  +${resolution.scoreDelta}`, TEXT_COLOR.gold)
-      this.time.delayedCall(260, () => this.showStageWin(resolution.timeBonus))
+      this.scheduleOnce(260, () => this.showStageWin(resolution.timeBonus))
     } else if (resolution.outcome === 'path-complete') {
       this.inputIsLocked = true
       this.showFeedback(`PAD KLAAR  +${resolution.scoreDelta}`, TEXT_COLOR.gold)
-      this.time.delayedCall(160, () => {
-        if (this.state.status === 'playing') {
-          this.renderPath()
-          this.inputIsLocked = false
-        }
+      this.scheduleOnce(160, () => {
+        this.renderPath()
+        this.inputIsLocked = false
       })
     } else {
       this.showHitFeedback(resolution.quality!, resolution.scoreDelta)
@@ -290,7 +303,7 @@ export class GameScene extends Phaser.Scene {
     const next = this.addText(400, 350, nextLabel, 18, TEXT_COLOR.green).setOrigin(0.5)
     this.overlay = this.add.container(0, 0, [shade, title, score, bonus, next]).setDepth(DEPTH.overlay)
 
-    this.time.delayedCall(950, () => {
+    this.scheduleOnce(950, () => {
       this.overlay?.destroy(true)
       this.overlay = undefined
       if (adventureDue) {
@@ -316,7 +329,7 @@ export class GameScene extends Phaser.Scene {
     this.updateAffinityLights()
     this.comboText.setText('')
     this.renderPath()
-    this.time.delayedCall(280, () => {
+    this.scheduleOnce(280, () => {
       this.inputIsLocked = false
     })
   }
@@ -513,7 +526,7 @@ export class GameScene extends Phaser.Scene {
       this.cameras.main.shake(180, 0.008)
       this.effectWash.setFillStyle(BAR_COLOR.dangerGlow).setAlpha(0.18)
       this.tweens.add({ targets: this.effectWash, alpha: 0, duration: 260 })
-      this.time.delayedCall(260, () => this.showGameOver('RODE LIJN BEREIKTE HET MIDDEN'))
+      this.scheduleOnce(260, () => this.showGameOver('RODE LIJN BEREIKTE HET MIDDEN'))
       return true
     }
 
