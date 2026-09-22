@@ -27,13 +27,25 @@ function correctAttempt(state: GameState, atMs = 400, responseMs = 250) {
 
 // Bouwt een vaste keten a -> b -> c van twee stappen met gekozen houdingen,
 // zodat de laatste keuze in fragment 'c' tegen een bekend overwicht afgezet kan worden.
-function buildChainStory(firstAlignment: AdventureAlignment, secondAlignment: AdventureAlignment, finalChoices: AdventureChoice[]): AdventureStory {
+function buildChainStory(
+  firstAlignment: AdventureAlignment,
+  secondAlignment: AdventureAlignment,
+  finalChoices: AdventureChoice[],
+): AdventureStory {
   return {
     id: 'test-chain',
     entryFragmentId: 'a',
     fragments: {
-      a: { id: 'a', text: 'a', choices: [{ id: 'a1', label: 'a1', description: '', alignment: firstAlignment, next: 'b' }] },
-      b: { id: 'b', text: 'b', choices: [{ id: 'b1', label: 'b1', description: '', alignment: secondAlignment, next: 'c' }] },
+      a: {
+        id: 'a',
+        text: 'a',
+        choices: [{ id: 'a1', label: 'a1', description: '', alignment: firstAlignment, next: 'b' }],
+      },
+      b: {
+        id: 'b',
+        text: 'b',
+        choices: [{ id: 'b1', label: 'b1', description: '', alignment: secondAlignment, next: 'c' }],
+      },
       c: { id: 'c', text: 'c', choices: finalChoices },
     },
   }
@@ -90,12 +102,14 @@ describe('invoer en balkvoortgang', () => {
     const activeBlock = initial.path.blocks[0]
     expect(resolveAttempt(initial, { ...activeBlock, atMs: 400, responseMs: 250 }).outcome).toBe('correct')
     const wrongColor = activeBlock.color === 'red' ? 'blue' : 'red'
-    expect(resolveAttempt(initial, {
-      color: wrongColor,
-      direction: activeBlock.direction,
-      atMs: 400,
-      responseMs: 250,
-    }).outcome).toBe('wrong')
+    expect(
+      resolveAttempt(initial, {
+        color: wrongColor,
+        direction: activeBlock.direction,
+        atMs: 400,
+        responseMs: 250,
+      }).outcome,
+    ).toBe('wrong')
   })
 
   it('beweegt de balk aan de actieve zijde naar binnen bij een goed blok', () => {
@@ -311,9 +325,7 @@ describe('tijd, kwaliteit en combo', () => {
     }
     expect(state.timing.combo.streak).toBe(3)
     expect(state.timing.combo.multiplier).toBe(2)
-    expect(thirdScoreDelta).toBe(
-      (gameConfig.pointsPerBlock + gameConfig.timing.qualityBonusPoints.perfect) * 2,
-    )
+    expect(thirdScoreDelta).toBe((gameConfig.pointsPerBlock + gameConfig.timing.qualityBonusPoints.perfect) * 2)
     expect(getMultiplier(15)).toBe(5)
     expect(state.timing.timeReliefMs).toBe(
       3 * gameConfig.timing.timeReliefPerCorrectMs + gameConfig.timing.extraTimeReliefPerMultiplierStepMs,
@@ -371,7 +383,11 @@ describe('tijd, kwaliteit en combo', () => {
     }
 
     expect([...reliefByMultiplier.entries()]).toEqual([
-      [1, 250], [2, 350], [3, 450], [4, 550], [5, 650],
+      [1, 250],
+      [2, 350],
+      [3, 450],
+      [4, 550],
+      [5, 650],
     ])
     expect(state.status).toBe('stage-win')
     expect(getTimePressure(state, atMs)).toBeLessThan(pressureBeforeHighCombo)

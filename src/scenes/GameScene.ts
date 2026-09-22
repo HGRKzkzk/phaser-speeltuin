@@ -18,7 +18,16 @@ import type {
   HitQuality,
   TargetSide,
 } from '../game/types'
-import { BAR_COLOR, BLOCK_COLOR_HEX, COMBO_MULTIPLIER_COLOR, DEPTH, PANEL_COLOR, QUALITY_COLOR, QUALITY_LABEL, TEXT_COLOR } from './theme'
+import {
+  BAR_COLOR,
+  BLOCK_COLOR_HEX,
+  COMBO_MULTIPLIER_COLOR,
+  DEPTH,
+  PANEL_COLOR,
+  QUALITY_COLOR,
+  QUALITY_LABEL,
+  TEXT_COLOR,
+} from './theme'
 
 type BlockView = {
   block: GameBlock
@@ -370,7 +379,9 @@ export class GameScene extends Phaser.Scene {
     this.adventureSelectorDirection = 1
     this.adventureSelector = this.createAdventureSelector()
 
-    const hint = this.addText(400, 448, 'Houd SHIFT vast om te bewegen · SPATIE kiest', 15, TEXT_COLOR.muted).setOrigin(0.5)
+    const hint = this.addText(400, 448, 'Houd SHIFT vast om te bewegen · SPATIE kiest', 15, TEXT_COLOR.muted).setOrigin(
+      0.5,
+    )
 
     this.adventureUI = this.add
       .container(0, 0, [
@@ -492,7 +503,9 @@ export class GameScene extends Phaser.Scene {
     const finalScore = this.addText(400, 270, `${this.state.score} punten`, 32, TEXT_COLOR.gold).setOrigin(0.5)
     const bestScore = this.addText(400, 315, `Beste: ${best}`, 18, TEXT_COLOR.muted).setOrigin(0.5)
     const restart = this.addText(400, 375, 'Druk op SPATIE om opnieuw te beginnen', 19, TEXT_COLOR.green).setOrigin(0.5)
-    this.overlay = this.add.container(0, 0, [shade, title, cause, level, finalScore, bestScore, restart]).setDepth(DEPTH.overlay)
+    this.overlay = this.add
+      .container(0, 0, [shade, title, cause, level, finalScore, bestScore, restart])
+      .setDepth(DEPTH.overlay)
   }
 
   private moveProgressBar(side: TargetSide) {
@@ -552,9 +565,7 @@ export class GameScene extends Phaser.Scene {
     const dangerBar = this.progressBars[dangerSide]
     const x = dangerBar.container.x + (dangerSide === 'left' ? 22 : -22)
     const reliefSeconds = (timeReliefMs / 1000).toLocaleString('nl-NL')
-    const label = this.addText(x, 145, `+${reliefSeconds}s`, 13, TEXT_COLOR.cyan)
-      .setOrigin(0.5)
-      .setDepth(DEPTH.hud)
+    const label = this.addText(x, 145, `+${reliefSeconds}s`, 13, TEXT_COLOR.cyan).setOrigin(0.5).setDepth(DEPTH.hud)
 
     this.tweens.add({
       targets: label,

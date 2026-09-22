@@ -1,0 +1,15 @@
+{
+  "semi": false,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "printWidth": 120,
+  "tabWidth": 2,
+  "overrides": [
+    {
+      "files": "src/game/adventures.ts",
+      "options": {
+        "printWidth": 1000
+      }
+    }
+  ]
+}
