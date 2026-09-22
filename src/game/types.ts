@@ -1,7 +1,7 @@
 export type BlockColor = 'red' | 'blue'
 export type BlockDirection = 'up' | 'left' | 'right'
 export type TargetSide = 'left' | 'right'
-export type GameStatus = 'playing' | 'stage-win' | 'game-over' | 'adventure'
+export type GameStatus = 'playing' | 'stage-win' | 'stage-late' | 'game-over' | 'adventure'
 export type HitQuality = 'steady' | 'good' | 'great' | 'perfect'
 
 export type ComboState = {
@@ -30,12 +30,28 @@ export type PathState = {
 
 export type AdventureAlignment = 'bold' | 'wary'
 
+export type JourneyRoute = 'open' | 'sheltered'
+export type ArrivalTone = 'persistent' | 'fluent' | 'steady' | 'late'
+export type LevelRules = { targetHits: number; timeLimitMs: number }
+export type LevelPerformance = { mistakes: number; highestCombo: number; elapsedMs: number }
+export type JourneyMemory = LevelPerformance & {
+  route: JourneyRoute
+  remainingMs: number
+  tone: ArrivalTone
+}
+export type JourneyState = {
+  phase: 'unmet' | 'travelling' | 'arrived' | 'complete'
+  route: JourneyRoute | null
+  memory: JourneyMemory | null
+}
+
 export type AdventureChoice = {
   id: string
   label: string
   description: string
   alignment: AdventureAlignment
   next: string
+  route?: JourneyRoute
 }
 
 export type AdventureFragment = {
@@ -46,6 +62,7 @@ export type AdventureFragment = {
 
 export type AdventureStory = {
   id: string
+  kind?: 'meeting' | 'arrival'
   entryFragmentId: string
   fragments: Record<string, AdventureFragment>
 }
@@ -85,6 +102,9 @@ export type GameState = {
   timing: TimingState
   path: PathState
   adventure: AdventureState
+  levelRules: LevelRules
+  performance: LevelPerformance
+  journey: JourneyState
 }
 
 export type PlayerAttempt = {
@@ -108,5 +128,5 @@ export type AttemptResolution = {
 export type TimePressureResolution = {
   state: GameState
   progress: number
-  outcome: 'running' | 'game-over'
+  outcome: 'running' | 'time-up'
 }

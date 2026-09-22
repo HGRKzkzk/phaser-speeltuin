@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { gameConfig } from '../game/config'
+import { getJourneyCaption } from '../game/journey'
 import {
   chooseAdventureOption,
   createGameState,
@@ -88,6 +89,8 @@ export class GameScene extends Phaser.Scene {
   private sideText!: Phaser.GameObjects.Text
   private feedbackText!: Phaser.GameObjects.Text
   private comboText!: Phaser.GameObjects.Text
+  private journeyText!: Phaser.GameObjects.Text
+  private goalText!: Phaser.GameObjects.Text
   private overlay?: Phaser.GameObjects.Container
   private colorWash!: Phaser.GameObjects.Rectangle
   private effectWash!: Phaser.GameObjects.Rectangle
@@ -133,6 +136,7 @@ export class GameScene extends Phaser.Scene {
 
     this.scoreText = this.addText(24, 22, 'PUNTEN  0', 22).setOrigin(0)
     this.levelText = this.addText(776, 22, 'LEVEL  1', 22).setOrigin(1, 0)
+    this.journeyText = this.addText(400, 60, '', 13, TEXT_COLOR.soft).setOrigin(0.5)
     this.sideText = this.addText(400, 88, '', 22).setOrigin(0.5)
     this.comboText = this.addText(400, 126, '', 24, TEXT_COLOR.default).setOrigin(0.5).setDepth(DEPTH.hud)
     this.feedbackText = this.addText(400, 400, '', 22).setOrigin(0.5)
@@ -218,6 +222,7 @@ export class GameScene extends Phaser.Scene {
     const { targetSide, blocks } = this.state.path
     const horizontalArrow = targetSide === 'left' ? '←' : '→'
     this.sideText.setText(`${horizontalArrow} + ↑  ·  PAD ${this.state.completedPaths + 1}`)
+    this.updateJourneyDisplay()
 
     blocks.forEach((block, index) => {
       const step = index * 50
@@ -288,6 +293,7 @@ export class GameScene extends Phaser.Scene {
     this.state = resolution.state
     this.scoreText.setText(`PUNTEN  ${this.state.score}`)
     this.moveProgressBar(activeSide)
+    this.updateJourneyDisplay()
 
     if (resolution.outcome === 'wrong' || resolution.outcome === 'game-over') {
       this.events.emit('block-missed', resolution, { color, previousMultiplier })
@@ -327,7 +333,7 @@ export class GameScene extends Phaser.Scene {
     if (resolution.outcome === 'stage-win') {
       this.inputIsLocked = true
       this.showFeedback(`MIDDEN BEREIKT  +${resolution.scoreDelta}`, TEXT_COLOR.gold)
-      this.scheduleOnce(260, () => this.showStageWin(resolution.timeBonus))
+      this.scheduleOnce(260, () => this.showStageEnd(resolution.timeBonus))
     } else if (resolution.outcome === 'path-complete') {
       this.inputIsLocked = true
       this.showFeedback(`PAD KLAAR  +${resolution.scoreDelta}`, TEXT_COLOR.gold)
@@ -341,17 +347,36 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private showStageWin(timeBonus: number) {
+  private showStageEnd(timeBonus: number) {
     const adventureDue = isAdventureDue(this.state)
     const shade = this.add.rectangle(400, 250, 800, 500, PANEL_COLOR.overlayShade, 0.88)
-    const title = this.addText(400, 185, `LEVEL ${this.state.level} KLAAR`, 40, TEXT_COLOR.gold).setOrigin(0.5)
+    const late = this.state.status === 'stage-late'
+    const titleText = late
+      ? 'OP JOUW TEMPO VERDER'
+      : this.state.journey.phase === 'arrived'
+        ? 'SAMEN AANGEKOMEN'
+        : `LEVEL ${this.state.level} KLAAR`
+    const title = this.addText(400, 185, titleText, 40, TEXT_COLOR.gold).setOrigin(0.5)
     const score = this.addText(400, 255, `${this.state.score} punten`, 28, TEXT_COLOR.default).setOrigin(0.5)
-    const bonus = this.addText(400, 305, `Tijdbonus  +${timeBonus}`, 18, TEXT_COLOR.cyan).setOrigin(0.5)
-    const nextLabel = adventureDue ? 'EEN TEKSTAVONTUUR WACHT' : 'VOLGENDE LEVEL'
+    const bonus = this.addText(
+      400,
+      305,
+      late ? 'Deze keer zonder tijdbonus · Je punten blijven' : `Tijdbonus  +${timeBonus}`,
+      18,
+      TEXT_COLOR.cyan,
+    ).setOrigin(0.5)
+    const nextLabel =
+      this.state.journey.phase === 'arrived'
+        ? 'NOOR GAAT NAAST JE ZITTEN'
+        : this.state.level === 1 && this.state.journey.phase === 'unmet'
+          ? 'IEMAND WACHT BIJ DE SPLITSING'
+          : adventureDue
+            ? 'EEN TEKSTAVONTUUR WACHT'
+            : 'VOLGENDE LEVEL'
     const next = this.addText(400, 350, nextLabel, 18, TEXT_COLOR.green).setOrigin(0.5)
     this.overlay = this.add.container(0, 0, [shade, title, score, bonus, next]).setDepth(DEPTH.overlay)
 
-    this.scheduleOnce(950, () => {
+    this.scheduleOnce(late ? 1800 : 950, () => {
       this.overlay?.destroy(true)
       this.overlay = undefined
       if (adventureDue) {
@@ -423,7 +448,10 @@ export class GameScene extends Phaser.Scene {
 
   private createAdventureChoiceView(x: number, choice: AdventureChoice): AdventureChoiceView {
     const box = this.add.rectangle(0, 0, 190, 110, PANEL_COLOR.background, 0.82).setStrokeStyle(1, PANEL_COLOR.border)
-    const label = this.addText(0, -32, choice.label, 16, TEXT_COLOR.default).setOrigin(0.5).setAlign('center')
+    const label = this.addText(0, -32, choice.label, 16, TEXT_COLOR.default)
+      .setOrigin(0.5)
+      .setAlign('center')
+      .setWordWrapWidth(170, true)
     const description = this.addText(0, 2, choice.description, 13, TEXT_COLOR.muted)
       .setOrigin(0.5)
       .setAlign('center')
@@ -524,7 +552,9 @@ export class GameScene extends Phaser.Scene {
     const shade = this.add.rectangle(400, 250, 800, 500, PANEL_COLOR.overlayShade, 0.94)
     const title = this.addText(400, 125, 'GAME OVER', 48, TEXT_COLOR.gameOverTitle).setOrigin(0.5)
     const cause = this.addText(400, 180, reason, 16, TEXT_COLOR.danger).setOrigin(0.5)
-    const level = this.addText(400, 225, `Level ${this.state.level}`, 22, TEXT_COLOR.steady).setOrigin(0.5)
+    const levelLabel =
+      this.state.journey.phase === 'travelling' ? 'Het donker valt. Noor blijft bij je.' : `Level ${this.state.level}`
+    const level = this.addText(400, 225, levelLabel, 22, TEXT_COLOR.steady).setOrigin(0.5)
     const finalScore = this.addText(400, 270, `${this.state.score} punten`, 32, TEXT_COLOR.gold).setOrigin(0.5)
     const bestScore = this.addText(400, 315, `Beste: ${best}`, 18, TEXT_COLOR.muted).setOrigin(0.5)
     const restart = this.addText(400, 375, 'Druk op SPATIE om opnieuw te beginnen', 19, TEXT_COLOR.green).setOrigin(0.5)
@@ -570,15 +600,15 @@ export class GameScene extends Phaser.Scene {
       Phaser.Math.Linear(BAR_START_X[dangerSide], centerX, resolution.progress),
     )
 
-    if (resolution.outcome === 'game-over') {
+    if (resolution.outcome === 'time-up') {
       this.state = resolution.state
       this.inputIsLocked = true
       this.colorWash.setAlpha(0)
-      this.comboText.setText('DE TIJD HAALT JE IN')
-      this.cameras.main.shake(180, 0.008)
+      this.comboText.setText('HET WORDT DONKER · JE REIS GAAT DOOR')
+      this.updateJourneyDisplay()
       this.effectWash.setFillStyle(BAR_COLOR.dangerGlow).setAlpha(0.18)
       this.tweens.add({ targets: this.effectWash, alpha: 0, duration: 260 })
-      this.scheduleOnce(260, () => this.showGameOver('RODE LIJN BEREIKTE HET MIDDEN'))
+      this.scheduleOnce(260, () => this.showStageEnd(0))
       return true
     }
 
@@ -603,8 +633,21 @@ export class GameScene extends Phaser.Scene {
   }
 
   private getBarX(side: TargetSide) {
-    const distance = this.state.edgeProgress[side] * gameConfig.barMovementPixels
-    return side === 'left' ? BAR_START_X.left + distance : BAR_START_X.right - distance
+    const progress = this.state.edgeProgress[side]
+    if (progress < 0) {
+      const distance = progress * gameConfig.barMovementPixels
+      return side === 'left' ? BAR_START_X.left + distance : BAR_START_X.right - distance
+    }
+    const centerX = side === 'left' ? 392 : 408
+    return Phaser.Math.Linear(BAR_START_X[side], centerX, Math.min(1, progress / this.state.levelRules.targetHits))
+  }
+
+  private updateJourneyDisplay() {
+    this.journeyText.setText(getJourneyCaption(this.state.journey))
+    const destination =
+      this.state.journey.phase === 'travelling' || this.state.journey.phase === 'arrived' ? 'SCHUILPLAATS' : 'STAGE WIN'
+    const progress = Math.max(0, this.state.edgeProgress[this.state.path.targetSide])
+    this.goalText.setText(`${destination} · ${progress}/${this.state.levelRules.targetHits}`)
   }
 
   private updateAffinityLights() {
@@ -734,7 +777,7 @@ export class GameScene extends Phaser.Scene {
   private drawArena() {
     this.add.rectangle(400, 250, 760, 150, PANEL_COLOR.background).setStrokeStyle(2, PANEL_COLOR.border)
     this.add.rectangle(CENTER_X, 250, 8, 190, BAR_COLOR.neutralHalo, 0.85)
-    this.addText(CENTER_X, 362, 'STAGE WIN', 13, TEXT_COLOR.subtle).setOrigin(0.5)
+    this.goalText = this.addText(CENTER_X, 362, 'STAGE WIN', 13, TEXT_COLOR.subtle).setOrigin(0.5)
     this.add.rectangle(20, 250, 2, 190, PANEL_COLOR.edgeAccent, 0.45)
     this.add.rectangle(780, 250, 2, 190, PANEL_COLOR.edgeAccent, 0.45)
   }

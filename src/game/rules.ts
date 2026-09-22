@@ -1,5 +1,6 @@
 import { gameConfig } from './config'
 import { pickAdventureStory } from './adventures'
+import { createArrivalStory, getLevelRules, meetingStory, recallJourney, rememberArrival } from './journey'
 import type {
   AdventureAlignment,
   AffinityMatrix,
@@ -35,17 +36,36 @@ export function getMultiplier(streak: number) {
 
 export function getTimePressure(state: GameState, nowMs: number) {
   const effectiveElapsedMs = Math.max(0, nowMs - state.timing.levelStartedAtMs - state.timing.timeReliefMs)
-  return Math.min(1, effectiveElapsedMs / gameConfig.timing.levelTimeLimitMs)
+  return Math.min(1, effectiveElapsedMs / state.levelRules.timeLimitMs)
 }
 
 export function resolveTimePressure(state: GameState, nowMs: number): TimePressureResolution {
   const progress = getTimePressure(state, nowMs)
-  const gameOver = state.status === 'playing' && progress >= 1
-
+  if (state.status !== 'playing' || progress < 1) {
+    return { progress, outcome: 'running', state }
+  }
+  const performance = { ...state.performance, elapsedMs: Math.max(0, nowMs - state.timing.levelStartedAtMs) }
+  const journey =
+    state.journey.phase === 'travelling' && state.journey.route
+      ? {
+          ...state.journey,
+          phase: 'arrived' as const,
+          memory: {
+            ...rememberArrival(state.journey.route, performance, state.levelRules, state.timing.timeReliefMs),
+            tone: 'late' as const,
+          },
+        }
+      : state.journey
   return {
     progress,
-    outcome: gameOver ? 'game-over' : 'running',
-    state: gameOver ? { ...state, status: 'game-over' } : state,
+    outcome: 'time-up',
+    state: {
+      ...state,
+      status: 'stage-late',
+      performance,
+      journey,
+      adventure: { ...state.adventure, levelsUntilAdventure: Math.max(0, state.adventure.levelsUntilAdventure - 1) },
+    },
   }
 }
 
@@ -107,6 +127,9 @@ export function createGameState(random: RandomSource = Math.random, nowMs = 0): 
     status: 'playing',
     completedPaths: 0,
     edgeProgress: { left: 0, right: 0 },
+    levelRules: getLevelRules(),
+    performance: { mistakes: 0, highestCombo: 0, elapsedMs: 0 },
+    journey: { phase: 'unmet', route: null, memory: null },
     affinity: recordShown(createEmptyAffinity(), path),
     timing: {
       levelStartedAtMs: nowMs,
@@ -131,6 +154,9 @@ export function startNextLevel(state: GameState, random: RandomSource = Math.ran
     status: 'playing',
     completedPaths: 0,
     edgeProgress: { left: 0, right: 0 },
+    levelRules: getLevelRules(state.journey.phase === 'travelling' ? state.journey.route : null),
+    performance: { mistakes: 0, highestCombo: 0, elapsedMs: 0 },
+    journey: state.journey,
     affinity: recordShown(state.affinity, path),
     timing: {
       levelStartedAtMs: nowMs,
@@ -147,11 +173,20 @@ export function startNextLevel(state: GameState, random: RandomSource = Math.ran
 }
 
 export function isAdventureDue(state: GameState): boolean {
-  return state.adventure.levelsUntilAdventure <= 0
+  return (
+    (state.level === 1 && state.journey.phase === 'unmet') ||
+    state.journey.phase === 'arrived' ||
+    state.adventure.levelsUntilAdventure <= 0
+  )
 }
 
 export function enterAdventure(state: GameState, random: RandomSource = Math.random): GameState {
-  const story = pickAdventureStory(random)
+  const story =
+    state.journey.phase === 'arrived' && state.journey.memory
+      ? createArrivalStory(state.journey.memory)
+      : state.level === 1 && state.journey.phase === 'unmet'
+        ? meetingStory
+        : recallJourney(pickAdventureStory(random), state.journey.memory)
   return {
     ...state,
     status: 'adventure',
@@ -196,6 +231,31 @@ export function chooseAdventureOption(
     }
   }
 
+  if (story.kind === 'meeting') {
+    if (!choice.route) throw new Error('Een routekeuze ontbreekt.')
+    return startNextLevel(
+      {
+        ...state,
+        adventure: { ...state.adventure, active: null, log },
+        journey: { phase: 'travelling', route: choice.route, memory: null },
+      },
+      random,
+      nowMs,
+    )
+  }
+
+  if (story.kind === 'arrival') {
+    return startNextLevel(
+      {
+        ...state,
+        adventure: { ...state.adventure, active: null, log },
+        journey: { ...state.journey, phase: 'complete' },
+      },
+      random,
+      nowMs,
+    )
+  }
+
   const bonus = isDefiantChoice(priorAlignments, choice.alignment) ? gameConfig.adventure.defianceBonus : 0
   return startNextLevel(
     { ...state, adventure: { ...state.adventure, active: null, log }, score: state.score + bonus },
@@ -228,6 +288,11 @@ export function resolveAttempt(
       timeReliefMs: 0,
       state: {
         ...state,
+        performance: {
+          ...state.performance,
+          mistakes: state.performance.mistakes + 1,
+          elapsedMs: Math.max(0, attempt.atMs - state.timing.levelStartedAtMs),
+        },
         status: gameOver ? 'game-over' : 'playing',
         score: Math.max(0, state.score - gameConfig.penaltyPerMistake),
         edgeProgress: { ...state.edgeProgress, [activeSide]: progress },
@@ -251,17 +316,22 @@ export function resolveAttempt(
   const earnedTimeReliefMs =
     gameConfig.timing.timeReliefPerCorrectMs + (multiplier - 1) * gameConfig.timing.extraTimeReliefPerMultiplierStepMs
   const timeReliefMs = state.timing.timeReliefMs + earnedTimeReliefMs
+  const performance = {
+    ...state.performance,
+    highestCombo: Math.max(state.performance.highestCombo, streak),
+    elapsedMs: Math.max(0, attempt.atMs - state.timing.levelStartedAtMs),
+  }
   const effectiveElapsedMs = Math.max(0, attempt.atMs - state.timing.levelStartedAtMs - timeReliefMs)
   const timeBonus =
-    progress >= gameConfig.progressForStageWin
-      ? Math.max(0, Math.ceil((gameConfig.timing.levelTimeLimitMs - effectiveElapsedMs) / 1000))
+    progress >= state.levelRules.targetHits
+      ? Math.max(0, Math.ceil((state.levelRules.timeLimitMs - effectiveElapsedMs) / 1000))
       : 0
   const scoreDelta = hitPoints + pathBonus + timeBonus
   const score = state.score + scoreDelta
   const affinity = recordCorrect(state.affinity, activeSide, activeBlock.color)
   const combo = { streak, multiplier, lastCorrectAtMs: attempt.atMs }
 
-  if (progress >= gameConfig.progressForStageWin) {
+  if (progress >= state.levelRules.targetHits) {
     return {
       outcome: 'stage-win',
       quality,
@@ -270,6 +340,15 @@ export function resolveAttempt(
       timeReliefMs: earnedTimeReliefMs,
       state: {
         ...state,
+        performance,
+        journey:
+          state.journey.phase === 'travelling' && state.journey.route
+            ? {
+                ...state.journey,
+                phase: 'arrived',
+                memory: rememberArrival(state.journey.route, performance, state.levelRules, timeReliefMs),
+              }
+            : state.journey,
         score,
         status: 'stage-win',
         completedPaths,
@@ -293,6 +372,7 @@ export function resolveAttempt(
       timeReliefMs: earnedTimeReliefMs,
       state: {
         ...state,
+        performance,
         score,
         edgeProgress: { ...state.edgeProgress, [activeSide]: progress },
         affinity,
@@ -311,6 +391,7 @@ export function resolveAttempt(
     timeReliefMs: earnedTimeReliefMs,
     state: {
       ...state,
+      performance,
       score,
       completedPaths,
       edgeProgress: { ...state.edgeProgress, [activeSide]: progress },

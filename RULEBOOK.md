@@ -5,7 +5,7 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 ## Begrippen
 
 - **Spel:** de volledige poging van level 1 tot game over.
-- **Level:** een speelveld tussen een nieuwe beginstand van de buitenbalken en een stage win.
+- **Level:** een speelveld tussen een nieuwe beginstand van de buitenbalken en een stage win of het verstrijken van de tijd.
 - **Pad:** de zeven blokken tussen het midden en één schermrand.
 - **Blok:** één onafhankelijke combinatie van een kleur en een richting.
 - **Actief blok:** het enige blok waarop invoer op dat moment betrekking heeft.
@@ -26,7 +26,7 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 5. Een verkeerde combinatie kost een punt en beweegt diezelfde balk naar de buitenrand.
 6. Na het laatste blok begint een nieuw pad.
 
-## Balken, stage win en game over
+## Balken, levelovergangen en game over
 
 - De linker- en rechterbalk bewaren onafhankelijk hun positie binnen het level.
 - Ieder level heeft één actieve zijde; de balk aan die zijde is wit en reageert op de invoer van de speler.
@@ -35,17 +35,36 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - Iedere multiplierstap voegt daar per treffer 100 milliseconden aan toe: van 250 milliseconden bij ×1 tot 650 milliseconden bij ×5.
 - Langzaam spelen koopt minder tijd terug dan er verstrijkt; alleen een voldoende hoog raaktempo kan de rode balk blijvend voorblijven.
 - Wanneer de witte actieve balk de middenbalk raakt, is het level gewonnen.
-- Wanneer de rode tijdsbalk de middenbalk raakt, is het game over.
-- Bij een stage win blijft de totaalscore bewaard en begint het volgende level met beide balken op hun beginpositie.
+- Wanneer de rode tijdsbalk de middenbalk raakt, eindigt alleen het level (`stage-late`). De score blijft bewaard, er is geen tijdbonus, en het volgende level of tekstavontuur gaat gewoon door.
+- Bij iedere levelovergang blijft de totaalscore bewaard en begint het volgende level met beide balken op hun beginpositie.
 - Het volgende level gebruikt de andere zijde en de bijbehorende horizontale richting.
-- Wanneer een balk de buitenrand raakt, is het game over.
+- Wanneer de witte balk de buitenrand raakt, is het game over.
 - Een volledig nieuw spel begint opnieuw in level 1 met nul punten.
+- Gewone levels vragen 21 netto treffers en geven 24 seconden basistijd. Een routekeuze kan voor één level een ander doel en een andere basistijd vastleggen.
+- De witte balk bereikt zichtbaar het midden bij het doel van dat level; een fout blijft één voortgangsstap kosten en de buitenrand blijft de verliesgrens.
+
+## De belofte aan Noor
+
+- Na het eerste level (gewonnen of te laat) volgt altijd de ontmoeting met Noor, vóór een willekeurig avontuur.
+- Je belooft samen vóór het donker de schuilplaats te bereiken. Beide antwoorden op de ontmoeting leiden naar dezelfde routekeuze.
+- Over de open vlakte vraagt het volgende level 14 netto treffers met 16 seconden basistijd; langs de beschutting vraagt het 28 netto treffers met 32 seconden basistijd.
+- Beide routes hebben dezelfde verhouding tussen basistijd en benodigde treffers. De langere route biedt meer gelegenheid voor combo-opbouw, maar vraagt ook langer concentratie.
+- De keuzes benoemen vooraf kortere weg/sneller donker en langere weg/meer tijd. Tijdens het level zijn route, reisgenoot en doel zichtbaar.
+- De route-instellingen staan bij de start van het level vast en bepalen zowel winst, tijdverlies, tijdbonus als de getekende balkposities.
+- Per level worden fouten, hoogste combo (aantal treffers) en verstreken speeltijd geregistreerd. Bij het einde van de route wordt ook de resterende tijd bewaard in een herinnering.
+- Na het routelevel volgt altijd een aankomstgesprek. Is de rode lijn in het midden, dan komen jullie na het donker aan met een eigen reactie van Noor; ook zonder correcte treffers gaat het verhaal verder. Veel fouten of weinig resterende tijd geven een moeizame aankomst; foutloos spelen met een sterke combo geeft een vloeiende aankomst; anders komen jullie gestaag aan. De grenzen staan in de centrale configuratie.
+- Alle aankomsten bieden een gesprek en een rustmoment. Ze zijn geen morele beoordeling en leveren geen extra scorebonus op.
+- De ontmoeting, routekeuze en aankomst kennen geen afwijkingsbonus voor het kiezen van een andere houding.
+- Tijdens gesprekken loopt geen actieve levelklok. Pas na de routekeuze of het laatste aankomstantwoord begint de klok van het volgende level.
+- Na de aankomst gelden weer de gewone levelregels. Noor en de herinnering blijven zichtbaar en klinken door in het begin van latere avonturen.
+- Bij game over stopt de poging zonder aankomst. Een nieuw spel wist ook Noor, de route en de herinnering.
 
 ## Tekstavontuur
 
 - Bij het begin van een spel en na ieder tekstavontuur wordt opnieuw willekeurig getrokken hoeveel levels er nog moeten volgen voordat het volgende tekstavontuur begint: 2, 3 of 4.
-- Iedere stage-win telt dat aantal met één af.
-- Staat dat aantal na een stage-win op nul, dan begint in plaats van het volgende level eerst een tekstavontuur.
+- De vaste ontmoeting en aankomst van Noor gaan voor op deze teller. Na de aankomst loopt de gewone afwisseling verder.
+- Ieder afgerond level (gewonnen of te laat) telt dat aantal precies één keer met één af.
+- Staat dat aantal na een afgerond level op nul, dan begint in plaats van het volgende level eerst een tekstavontuur.
 - Een tekstavontuur begint bij het eerste fragment van een willekeurig gekozen avontuur en toont daarna telkens één fragment met twee of drie keuzes.
 - De keuzewijzer beweegt zolang Shift wordt vastgehouden en staat stil zodra Shift wordt losgelaten.
 - Een keuze wordt bevestigd door de spatiebalk in te drukken; de keuze waar de keuzewijzer op dat moment op wijst, is de gemaakte keuze.
@@ -54,7 +73,7 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - Elke keuze in een tekstavontuur draagt een houding: gedurfd of behoedzaam.
 - Is er onder de keuzes vóór de laatste keuze van het avontuur een overwicht, en wijkt de houding van de laatste keuze daarvan af, dan levert dat een bonus van `adventure.defianceBonus` punten op.
 - Volgt de laatste keuze het overwicht, of is er geen overwicht, dan levert de laatste keuze geen bonus op.
-- Deze bonus is de enige score-invloed van een tekstavontuur; geen enkele andere keuze levert punten op of af, en het levelnummer wisselt niet tijdens het doorlopen ervan.
+- In de gewone avonturen is deze bonus de enige directe score-invloed; het levelnummer wisselt niet tijdens het doorlopen ervan. De Noor-verhaallus gebruikt gevolgen voor het lijnlevel en gesprek, zonder deze bonus.
 - Zodra het avontuur eindigt, wordt de eventuele bonus toegekend en begint direct het volgende level, met dezelfde levelwissel van zijde als daarbuiten.
 
 ## Kleuren en richtingen
@@ -92,9 +111,9 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - De multiplier wordt ×2 na 3 treffers, ×3 na 6, ×4 na 10 en ×5 na 15.
 - Meer dan 900 milliseconden tussen twee goede treffers begint een nieuwe combo.
 - Een fout verbreekt de combo onmiddellijk.
-- De combo vergroot naast de score ook de afstand tot de rode verliesconditie: ×1 koopt 250 ms per treffer, ×2 350 ms, ×3 450 ms, ×4 550 ms en ×5 650 ms.
-- Zonder goede treffers heeft de rode balk 24 seconden nodig om het midden te bereiken.
-- De actuele positie van de rode balk bepaalt ook de tijdbonus bij een eerdere stage-win.
+- De combo vergroot naast de score ook de afstand tot de rode tijdslijn: ×1 koopt 250 ms per treffer, ×2 350 ms, ×3 450 ms, ×4 550 ms en ×5 650 ms.
+- Zonder goede treffers heeft de rode balk in een gewoon level 24 seconden nodig om het midden te bereiken. Een gekozen route gebruikt de eigen basistijd.
+- De actuele positie van de rode balk bepaalt ook de tijdbonus bij een eerdere stage-win. Tijd alleen veroorzaakt nooit game over; snel spelen beloont, langzaam spelen blokkeert het verhaal niet.
 - Kwaliteit beïnvloedt alleen de score; de multiplier verhoogt zowel de score als de teruggewonnen tijd. Iedere goede treffer blijft precies één stap van de witte balk waard.
 - Visuele effecten mogen met de multiplier meegroeien, maar nooit de leesbaarheid van het actieve blok aantasten.
 
@@ -108,8 +127,10 @@ Deze regels mogen niet bij toeval veranderen tijdens visueel of technisch onderh
 - Binnen één level verandert de actieve zijde niet.
 - Score en balkposities worden door de regelkern bepaald, niet door animaties.
 - Reactietijd wordt door de scène gemeten, maar kwaliteit, combo, multiplier en punten worden door de regelkern bepaald.
-- De scène tekent de rode balk op basis van de verstreken tijd; de regelkern bepaalt wanneer die tijd game over veroorzaakt.
+- De scène tekent de rode balk op basis van de verstreken tijd; de regelkern bepaalt wanneer die tijd het level zonder bonus afrondt.
 - Teruggewonnen tijd wordt door de regelkern bijgehouden en bij ieder nieuw level op nul gezet.
+- De regelkern bewaart route, levelinstellingen en speelresultaat; de scène leest deze voor presentatie en bepaalt geen verhaaluitkomst.
+- Herinneringen veranderen nooit de gedeelde bronverhalen en blijven bewaard als de levelstatistieken bij de volgende start worden gewist.
 - Een volgend level bewaart de score; een nieuw spel wist de score.
 - Affiniteit en aanbod worden door de regelkern geregistreerd, niet door de presentatie.
 - Tijdens een tekstavontuur wijst de keuzewijzer altijd op precies één keuze.
@@ -122,4 +143,4 @@ Deze regels mogen niet bij toeval veranderen tijdens visueel of technisch onderh
 
 ## Afstelbare waarden
 
-Getallen zoals padlengte, punten, het aantal balkstappen tot winst of verlies, de mogelijke levelafstand tot een tekstavontuur en de afwijkingsbonus staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.
+Getallen zoals padlengte, punten, het aantal balkstappen tot winst of verlies, route-instellingen, aankomstgrenzen, de mogelijke levelafstand tot een tekstavontuur en de afwijkingsbonus staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.

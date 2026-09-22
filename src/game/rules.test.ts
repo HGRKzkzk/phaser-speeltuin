@@ -433,7 +433,7 @@ describe('tijd, kwaliteit en combo', () => {
 
   it.each([
     [1_250, 'stage-win'],
-    [1_500, 'game-over'],
+    [1_500, 'stage-late'],
   ] as const)('balanceert een level met %i ms per treffer als %s', (responseMs, expectedStatus) => {
     const random = createSeededRandom(17)
     let state = createGameState(random, 0)
@@ -442,7 +442,7 @@ describe('tijd, kwaliteit en combo', () => {
     for (let hit = 0; hit < gameConfig.progressForStageWin; hit += 1) {
       atMs += responseMs
       state = resolveTimePressure(state, atMs).state
-      if (state.status === 'game-over') break
+      if (state.status !== 'playing') break
       const result = resolveAttempt(state, correctAttempt(state, atMs, responseMs), random)
       state = result.state
       if (result.outcome === 'path-complete') atMs += 160
@@ -452,10 +452,17 @@ describe('tijd, kwaliteit en combo', () => {
     expect(state.timing.combo.multiplier).toBe(1)
   })
 
-  it('geeft game over wanneer de rode tijdslijn het midden bereikt', () => {
+  it('laat het spel zonder bonus doorgaan wanneer de rode tijdslijn het midden bereikt', () => {
     const state = createGameState(createSeededRandom(17), 1_000)
     const result = resolveTimePressure(state, 1_000 + gameConfig.timing.levelTimeLimitMs)
-    expect(result.outcome).toBe('game-over')
-    expect(result.state.status).toBe('game-over')
+    expect(result.outcome).toBe('time-up')
+    expect(result.state.status).toBe('stage-late')
+    expect(result.state.score).toBe(state.score)
+    expect(result.state.affinity).toEqual(state.affinity)
+    expect(result.state.adventure.levelsUntilAdventure).toBe(state.adventure.levelsUntilAdventure - 1)
+    expect(isAdventureDue(result.state)).toBe(true)
+    const repeated = resolveTimePressure(result.state, 100_000)
+    expect(repeated.outcome).toBe('running')
+    expect(repeated.state).toBe(result.state)
   })
 })

@@ -6,6 +6,15 @@ export const gameConfig = {
   progressForStageWin: 21,
   mistakesFromStartToGameOver: 6,
   barMovementPixels: 12,
+  journey: {
+    routes: {
+      open: { label: 'Open vlakte', targetHits: 14, timeLimitMs: 16_000 },
+      sheltered: { label: 'Langs de beschutting', targetHits: 28, timeLimitMs: 32_000 },
+    },
+    difficultArrivalMistakes: 3,
+    closeArrivalFraction: 0.2,
+    fluentArrivalStreak: 6,
+  },
   adventure: {
     levelGapChoices: [2, 3, 4],
     defianceBonus: 5,
