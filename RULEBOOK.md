@@ -93,7 +93,7 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - Meer dan 900 milliseconden tussen twee goede treffers begint een nieuwe combo.
 - Een fout verbreekt de combo onmiddellijk.
 - De combo vergroot naast de score ook de afstand tot de rode verliesconditie: ×1 koopt 250 ms per treffer, ×2 350 ms, ×3 450 ms, ×4 550 ms en ×5 650 ms.
-- Zonder goede treffers heeft de rode balk 18 seconden nodig om het midden te bereiken.
+- Zonder goede treffers heeft de rode balk 24 seconden nodig om het midden te bereiken.
 - De actuele positie van de rode balk bepaalt ook de tijdbonus bij een eerdere stage-win.
 - Kwaliteit beïnvloedt alleen de score; de multiplier verhoogt zowel de score als de teruggewonnen tijd. Iedere goede treffer blijft precies één stap van de witte balk waard.
 - Visuele effecten mogen met de multiplier meegroeien, maar nooit de leesbaarheid van het actieve blok aantasten.

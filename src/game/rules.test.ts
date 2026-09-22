@@ -348,7 +348,7 @@ describe('tijd, kwaliteit en combo', () => {
     })
     const result = resolveAttempt(state, correctAttempt(state, 5_000, 250))
     expect(result.outcome).toBe('stage-win')
-    expect(result.timeBonus).toBe(14)
+    expect(result.timeBonus).toBe(Math.ceil((gameConfig.timing.levelTimeLimitMs - 5_000 + result.timeReliefMs) / 1000))
     expect(result.scoreDelta).toBeGreaterThan(result.timeBonus)
   })
 
@@ -428,7 +428,28 @@ describe('tijd, kwaliteit en combo', () => {
     }
 
     expect(state.timing.timeReliefMs).toBe(3 * gameConfig.timing.timeReliefPerCorrectMs)
-    expect(getTimePressure(state, 6_000)).toBeGreaterThan(0.25)
+    expect(getTimePressure(state, 6_000)).toBeGreaterThan(getTimePressure(state, 2_000))
+  })
+
+  it.each([
+    [1_250, 'stage-win'],
+    [1_500, 'game-over'],
+  ] as const)('balanceert een level met %i ms per treffer als %s', (responseMs, expectedStatus) => {
+    const random = createSeededRandom(17)
+    let state = createGameState(random, 0)
+    let atMs = 280
+
+    for (let hit = 0; hit < gameConfig.progressForStageWin; hit += 1) {
+      atMs += responseMs
+      state = resolveTimePressure(state, atMs).state
+      if (state.status === 'game-over') break
+      const result = resolveAttempt(state, correctAttempt(state, atMs, responseMs), random)
+      state = result.state
+      if (result.outcome === 'path-complete') atMs += 160
+    }
+
+    expect(state.status).toBe(expectedStatus)
+    expect(state.timing.combo.multiplier).toBe(1)
   })
 
   it('geeft game over wanneer de rode tijdslijn het midden bereikt', () => {
