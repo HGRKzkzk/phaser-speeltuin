@@ -68,6 +68,7 @@ export class GameScene extends Phaser.Scene {
   private overlay?: Phaser.GameObjects.Container
   private colorWash!: Phaser.GameObjects.Rectangle
   private effectWash!: Phaser.GameObjects.Rectangle
+  private hitEmitter!: Phaser.GameObjects.Particles.ParticleEmitter
   private progressBars!: Record<TargetSide, ProgressBarView>
   private affinityLights!: Record<TargetSide, Record<BlockColor, Phaser.GameObjects.Arc>>
 
@@ -105,6 +106,7 @@ export class GameScene extends Phaser.Scene {
     }
     this.colorWash = this.add.rectangle(400, 250, 800, 500, 0xffffff, 0).setDepth(DEPTH.colorWash)
     this.effectWash = this.add.rectangle(400, 250, 800, 500, 0xffffff, 0).setDepth(DEPTH.effectWash)
+    this.hitEmitter = this.createHitEmitter()
 
     this.scoreText = this.addText(24, 22, 'PUNTEN  0', 22).setOrigin(0)
     this.levelText = this.addText(776, 22, 'LEVEL  1', 22).setOrigin(1, 0)
@@ -226,6 +228,18 @@ export class GameScene extends Phaser.Scene {
     })
 
     return { container, glow, halo, core }
+  }
+
+  private createHitEmitter() {
+    if (!this.textures.exists('spark')) {
+      const graphics = this.add.graphics()
+      graphics.fillStyle(0xffffff, 1)
+      graphics.fillCircle(4, 4, 4)
+      graphics.generateTexture('spark', 8, 8)
+      graphics.destroy()
+    }
+
+    return this.add.particles(0, 0, 'spark', { emitting: false }).setDepth(DEPTH.particles)
   }
 
   private createAffinityLight(x: number, y: number, color: BlockColor) {
@@ -604,21 +618,18 @@ export class GameScene extends Phaser.Scene {
     const multiplier = this.state.combo.multiplier
     const fill = BLOCK_COLOR_HEX[color]
     const burstCount = Math.min(16, 3 + multiplier * 2 + (quality === 'perfect' ? 3 : 0))
+    const lifespanMs = 180 + multiplier * 35
+    const minDistance = 22
+    const maxDistance = minDistance + 18 + multiplier * 5
 
-    for (let index = 0; index < burstCount; index += 1) {
-      const angle = (Math.PI * 2 * index) / burstCount + Math.random() * 0.35
-      const distance = 22 + Math.random() * (18 + multiplier * 5)
-      const spark = this.add.circle(view.x, view.y, 1.5 + Math.random() * 2, fill, 0.9).setDepth(DEPTH.particles)
-      this.tweens.add({
-        targets: spark,
-        x: view.x + Math.cos(angle) * distance,
-        y: view.y + Math.sin(angle) * distance,
-        alpha: 0,
-        scale: 0.25,
-        duration: 180 + multiplier * 35,
-        onComplete: () => spark.destroy(),
-      })
-    }
+    this.hitEmitter.setConfig({
+      tint: fill,
+      lifespan: lifespanMs,
+      speed: { min: (minDistance * 1000) / lifespanMs, max: (maxDistance * 1000) / lifespanMs },
+      scale: { start: 1, end: 0.25 },
+      alpha: { start: 0.9, end: 0 },
+    })
+    this.hitEmitter.explode(burstCount, view.x, view.y)
 
     if (multiplier >= 2 || quality === 'perfect') {
       this.effectWash.setFillStyle(fill).setAlpha(0.025 + multiplier * 0.012)
