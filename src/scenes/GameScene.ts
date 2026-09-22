@@ -18,6 +18,7 @@ import type {
   HitQuality,
   TargetSide,
 } from '../game/types'
+import { BAR_COLOR, BLOCK_COLOR_HEX, COMBO_MULTIPLIER_COLOR, DEPTH, PANEL_COLOR, QUALITY_COLOR, QUALITY_LABEL, TEXT_COLOR } from './theme'
 
 type BlockView = {
   block: GameBlock
@@ -101,15 +102,15 @@ export class GameScene extends Phaser.Scene {
         blue: this.createAffinityLight(446, 425, 'blue'),
       },
     }
-    this.colorWash = this.add.rectangle(400, 250, 800, 500, 0xffffff, 0).setDepth(10)
-    this.effectWash = this.add.rectangle(400, 250, 800, 500, 0xffffff, 0).setDepth(11)
+    this.colorWash = this.add.rectangle(400, 250, 800, 500, 0xffffff, 0).setDepth(DEPTH.colorWash)
+    this.effectWash = this.add.rectangle(400, 250, 800, 500, 0xffffff, 0).setDepth(DEPTH.effectWash)
 
     this.scoreText = this.addText(24, 22, 'PUNTEN  0', 22).setOrigin(0)
     this.levelText = this.addText(776, 22, 'LEVEL  1', 22).setOrigin(1, 0)
     this.sideText = this.addText(400, 88, '', 22).setOrigin(0.5)
-    this.comboText = this.addText(400, 126, '', 24, '#f8fafc').setOrigin(0.5).setDepth(12)
+    this.comboText = this.addText(400, 126, '', 24, TEXT_COLOR.default).setOrigin(0.5).setDepth(DEPTH.hud)
     this.feedbackText = this.addText(400, 400, '', 22).setOrigin(0.5)
-    this.addText(400, 464, 'Houd A = ROOD of D = BLAUW vast · druk daarna de pijl', 17, '#94a3b8').setOrigin(0.5)
+    this.addText(400, 464, 'Houd A = ROOD of D = BLAUW vast · druk daarna de pijl', 17, TEXT_COLOR.muted).setOrigin(0.5)
 
     this.redKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A)
     this.blueKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)
@@ -186,7 +187,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createBlockView(x: number, y: number, block: GameBlock) {
-    const fill = block.color === 'red' ? 0xff2d55 : 0x1687ff
+    const fill = BLOCK_COLOR_HEX[block.color]
     const rectangle = this.add.rectangle(0, 0, 42, 64, fill).setStrokeStyle(3, 0xffffff, 0.22)
     const arrowSymbol = block.direction === 'up' ? '↑' : block.direction === 'left' ? '←' : '→'
     const arrow = this.addText(0, 0, arrowSymbol, 31).setOrigin(0.5)
@@ -195,10 +196,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createProgressBar(side: TargetSide) {
-    const glow = this.add.rectangle(0, 0, 24, 198, 0xe2e8f0, 0.12)
-    const halo = this.add.rectangle(0, 0, 14, 194, 0xf8fafc, 0.28)
-    const core = this.add.rectangle(0, 0, 7, 190, 0xffffff, 0.96)
-    const container = this.add.container(BAR_START_X[side], 250, [glow, halo, core]).setDepth(5)
+    const glow = this.add.rectangle(0, 0, 24, 198, BAR_COLOR.neutralGlow, 0.12)
+    const halo = this.add.rectangle(0, 0, 14, 194, BAR_COLOR.neutralHalo, 0.28)
+    const core = this.add.rectangle(0, 0, 7, 190, BAR_COLOR.neutralCore, 0.96)
+    const container = this.add.container(BAR_START_X[side], 250, [glow, halo, core]).setDepth(DEPTH.progressBar)
 
     this.tweens.add({
       targets: [glow, halo],
@@ -213,8 +214,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createAffinityLight(x: number, y: number, color: BlockColor) {
-    const fill = color === 'red' ? 0xff2d55 : 0x1687ff
-    return this.add.circle(x, y, 5, fill, 0.18).setStrokeStyle(1, 0xffffff, 0.12)
+    return this.add.circle(x, y, 5, BLOCK_COLOR_HEX[color], 0.18).setStrokeStyle(1, 0xffffff, 0.12)
   }
 
   private tryBlock(direction: BlockDirection, color: BlockColor | null) {
@@ -236,7 +236,7 @@ export class GameScene extends Phaser.Scene {
 
     if (resolution.outcome === 'wrong' || resolution.outcome === 'game-over') {
       this.comboText.setText(previousMultiplier > 1 ? 'COMBO KWIJT' : '')
-      this.showFeedback(color ? 'MIS  −1' : 'HOUD EERST EEN KLEUR VAST', '#fda4af')
+      this.showFeedback(color ? 'MIS  −1' : 'HOUD EERST EEN KLEUR VAST', TEXT_COLOR.danger)
       this.cameras.main.shake(55, 0.004)
 
       if (resolution.outcome === 'game-over') {
@@ -263,11 +263,11 @@ export class GameScene extends Phaser.Scene {
 
     if (resolution.outcome === 'stage-win') {
       this.inputIsLocked = true
-      this.showFeedback(`MIDDEN BEREIKT  +${resolution.scoreDelta}`, '#fde68a')
+      this.showFeedback(`MIDDEN BEREIKT  +${resolution.scoreDelta}`, TEXT_COLOR.gold)
       this.time.delayedCall(260, () => this.showStageWin(resolution.timeBonus))
     } else if (resolution.outcome === 'path-complete') {
       this.inputIsLocked = true
-      this.showFeedback(`PAD KLAAR  +${resolution.scoreDelta}`, '#fde68a')
+      this.showFeedback(`PAD KLAAR  +${resolution.scoreDelta}`, TEXT_COLOR.gold)
       this.time.delayedCall(160, () => {
         if (this.state.status === 'playing') {
           this.renderPath()
@@ -282,13 +282,13 @@ export class GameScene extends Phaser.Scene {
 
   private showStageWin(timeBonus: number) {
     const adventureDue = isAdventureDue(this.state)
-    const shade = this.add.rectangle(400, 250, 800, 500, 0x070b14, 0.88)
-    const title = this.addText(400, 185, `LEVEL ${this.state.level} KLAAR`, 40, '#fde68a').setOrigin(0.5)
-    const score = this.addText(400, 255, `${this.state.score} punten`, 28, '#f8fafc').setOrigin(0.5)
-    const bonus = this.addText(400, 305, `Tijdbonus  +${timeBonus}`, 18, '#67e8f9').setOrigin(0.5)
+    const shade = this.add.rectangle(400, 250, 800, 500, PANEL_COLOR.overlayShade, 0.88)
+    const title = this.addText(400, 185, `LEVEL ${this.state.level} KLAAR`, 40, TEXT_COLOR.gold).setOrigin(0.5)
+    const score = this.addText(400, 255, `${this.state.score} punten`, 28, TEXT_COLOR.default).setOrigin(0.5)
+    const bonus = this.addText(400, 305, `Tijdbonus  +${timeBonus}`, 18, TEXT_COLOR.cyan).setOrigin(0.5)
     const nextLabel = adventureDue ? 'EEN TEKSTAVONTUUR WACHT' : 'VOLGENDE LEVEL'
-    const next = this.addText(400, 350, nextLabel, 18, '#86efac').setOrigin(0.5)
-    this.overlay = this.add.container(0, 0, [shade, title, score, bonus, next]).setDepth(30)
+    const next = this.addText(400, 350, nextLabel, 18, TEXT_COLOR.green).setOrigin(0.5)
+    this.overlay = this.add.container(0, 0, [shade, title, score, bonus, next]).setDepth(DEPTH.overlay)
 
     this.time.delayedCall(950, () => {
       this.overlay?.destroy(true)
@@ -326,8 +326,8 @@ export class GameScene extends Phaser.Scene {
     if (!adventure) return
 
     const fragment = adventure.story.fragments[adventure.fragmentId]
-    const shade = this.add.rectangle(400, 250, 800, 500, 0x070b14, 0.92)
-    const storyText = this.addText(400, 150, fragment.text, 18, '#e2e8f0')
+    const shade = this.add.rectangle(400, 250, 800, 500, PANEL_COLOR.overlayShade, 0.92)
+    const storyText = this.addText(400, 150, fragment.text, 18, TEXT_COLOR.soft)
       .setOrigin(0.5)
       .setWordWrapWidth(620, true)
       .setAlign('center')
@@ -343,7 +343,7 @@ export class GameScene extends Phaser.Scene {
     this.adventureSelectorDirection = 1
     this.adventureSelector = this.createAdventureSelector()
 
-    const hint = this.addText(400, 448, 'Houd SHIFT vast om te bewegen · SPATIE kiest', 15, '#94a3b8').setOrigin(0.5)
+    const hint = this.addText(400, 448, 'Houd SHIFT vast om te bewegen · SPATIE kiest', 15, TEXT_COLOR.muted).setOrigin(0.5)
 
     this.adventureUI = this.add
       .container(0, 0, [
@@ -353,15 +353,15 @@ export class GameScene extends Phaser.Scene {
         this.adventureSelector,
         hint,
       ])
-      .setDepth(30)
+      .setDepth(DEPTH.overlay)
 
     this.highlightAdventureChoice(this.getPointedAdventureChoiceIndex())
   }
 
   private createAdventureChoiceView(x: number, choice: AdventureChoice): AdventureChoiceView {
-    const box = this.add.rectangle(0, 0, 190, 110, 0x111a2e, 0.82).setStrokeStyle(1, 0x334155)
-    const label = this.addText(0, -32, choice.label, 16, '#f8fafc').setOrigin(0.5).setAlign('center')
-    const description = this.addText(0, 2, choice.description, 13, '#94a3b8')
+    const box = this.add.rectangle(0, 0, 190, 110, PANEL_COLOR.background, 0.82).setStrokeStyle(1, PANEL_COLOR.border)
+    const label = this.addText(0, -32, choice.label, 16, TEXT_COLOR.default).setOrigin(0.5).setAlign('center')
+    const description = this.addText(0, 2, choice.description, 13, TEXT_COLOR.muted)
       .setOrigin(0.5)
       .setAlign('center')
       .setWordWrapWidth(160, true)
@@ -371,10 +371,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createAdventureSelector() {
-    const glow = this.add.rectangle(0, 0, 14, 74, 0xe2e8f0, 0.14)
-    const halo = this.add.rectangle(0, 0, 9, 70, 0xf8fafc, 0.3)
-    const core = this.add.rectangle(0, 0, 4, 66, 0xffffff, 0.96)
-    return this.add.container(CENTER_X, ADVENTURE_TRACK_Y, [glow, halo, core]).setDepth(31)
+    const glow = this.add.rectangle(0, 0, 14, 74, BAR_COLOR.neutralGlow, 0.14)
+    const halo = this.add.rectangle(0, 0, 9, 70, BAR_COLOR.neutralHalo, 0.3)
+    const core = this.add.rectangle(0, 0, 4, 66, BAR_COLOR.neutralCore, 0.96)
+    return this.add.container(CENTER_X, ADVENTURE_TRACK_Y, [glow, halo, core]).setDepth(DEPTH.overlayForeground)
   }
 
   private updateAdventure(delta: number) {
@@ -421,8 +421,8 @@ export class GameScene extends Phaser.Scene {
   private highlightAdventureChoice(pointedIndex: number) {
     this.adventureChoiceViews.forEach((view, index) => {
       const isPointed = index === pointedIndex
-      view.box.setStrokeStyle(1, isPointed ? 0x64748b : 0x334155)
-      view.box.setFillStyle(0x111a2e, isPointed ? 0.92 : 0.82)
+      view.box.setStrokeStyle(1, isPointed ? PANEL_COLOR.borderHighlight : PANEL_COLOR.border)
+      view.box.setFillStyle(PANEL_COLOR.background, isPointed ? 0.92 : 0.82)
       view.hint.setAlpha(isPointed ? 0.45 : 0)
     })
   }
@@ -439,7 +439,7 @@ export class GameScene extends Phaser.Scene {
 
     const bonus = this.state.score - scoreBefore
     if (bonus > 0) {
-      this.showFeedback(`ONVERWACHT  +${bonus}`, '#fde68a')
+      this.showFeedback(`ONVERWACHT  +${bonus}`, TEXT_COLOR.gold)
     }
 
     this.presentLevel()
@@ -458,14 +458,14 @@ export class GameScene extends Phaser.Scene {
     localStorage.setItem('phaser-speeltuin-best', String(best))
     this.colorWash.setAlpha(0)
 
-    const shade = this.add.rectangle(400, 250, 800, 500, 0x070b14, 0.94)
-    const title = this.addText(400, 125, 'GAME OVER', 48, '#fb7185').setOrigin(0.5)
-    const cause = this.addText(400, 180, reason, 16, '#fda4af').setOrigin(0.5)
-    const level = this.addText(400, 225, `Level ${this.state.level}`, 22, '#cbd5e1').setOrigin(0.5)
-    const finalScore = this.addText(400, 270, `${this.state.score} punten`, 32, '#fde68a').setOrigin(0.5)
-    const bestScore = this.addText(400, 315, `Beste: ${best}`, 18, '#94a3b8').setOrigin(0.5)
-    const restart = this.addText(400, 375, 'Druk op SPATIE om opnieuw te beginnen', 19, '#86efac').setOrigin(0.5)
-    this.overlay = this.add.container(0, 0, [shade, title, cause, level, finalScore, bestScore, restart]).setDepth(30)
+    const shade = this.add.rectangle(400, 250, 800, 500, PANEL_COLOR.overlayShade, 0.94)
+    const title = this.addText(400, 125, 'GAME OVER', 48, TEXT_COLOR.gameOverTitle).setOrigin(0.5)
+    const cause = this.addText(400, 180, reason, 16, TEXT_COLOR.danger).setOrigin(0.5)
+    const level = this.addText(400, 225, `Level ${this.state.level}`, 22, TEXT_COLOR.steady).setOrigin(0.5)
+    const finalScore = this.addText(400, 270, `${this.state.score} punten`, 32, TEXT_COLOR.gold).setOrigin(0.5)
+    const bestScore = this.addText(400, 315, `Beste: ${best}`, 18, TEXT_COLOR.muted).setOrigin(0.5)
+    const restart = this.addText(400, 375, 'Druk op SPATIE om opnieuw te beginnen', 19, TEXT_COLOR.green).setOrigin(0.5)
+    this.overlay = this.add.container(0, 0, [shade, title, cause, level, finalScore, bestScore, restart]).setDepth(DEPTH.overlay)
   }
 
   private moveProgressBar(side: TargetSide) {
@@ -491,9 +491,9 @@ export class GameScene extends Phaser.Scene {
     ;(['left', 'right'] as TargetSide[]).forEach((side) => {
       const bar = this.progressBars[side]
       const isDanger = side !== activeSide
-      bar.glow.setFillStyle(isDanger ? 0xff1744 : 0xe2e8f0)
-      bar.halo.setFillStyle(isDanger ? 0xff2d55 : 0xf8fafc)
-      bar.core.setFillStyle(isDanger ? 0xff5c76 : 0xffffff)
+      bar.glow.setFillStyle(isDanger ? BAR_COLOR.dangerGlow : BAR_COLOR.neutralGlow)
+      bar.halo.setFillStyle(isDanger ? BAR_COLOR.dangerHalo : BAR_COLOR.neutralHalo)
+      bar.core.setFillStyle(isDanger ? BAR_COLOR.dangerCore : BAR_COLOR.neutralCore)
     })
   }
 
@@ -511,7 +511,7 @@ export class GameScene extends Phaser.Scene {
       this.colorWash.setAlpha(0)
       this.comboText.setText('DE TIJD HAALT JE IN')
       this.cameras.main.shake(180, 0.008)
-      this.effectWash.setFillStyle(0xff1744).setAlpha(0.18)
+      this.effectWash.setFillStyle(BAR_COLOR.dangerGlow).setAlpha(0.18)
       this.tweens.add({ targets: this.effectWash, alpha: 0, duration: 260 })
       this.time.delayedCall(260, () => this.showGameOver('RODE LIJN BEREIKTE HET MIDDEN'))
       return true
@@ -525,9 +525,9 @@ export class GameScene extends Phaser.Scene {
     const dangerBar = this.progressBars[dangerSide]
     const x = dangerBar.container.x + (dangerSide === 'left' ? 22 : -22)
     const reliefSeconds = (timeReliefMs / 1000).toLocaleString('nl-NL')
-    const label = this.addText(x, 145, `+${reliefSeconds}s`, 13, '#67e8f9')
+    const label = this.addText(x, 145, `+${reliefSeconds}s`, 13, TEXT_COLOR.cyan)
       .setOrigin(0.5)
-      .setDepth(12)
+      .setDepth(DEPTH.hud)
 
     this.tweens.add({
       targets: label,
@@ -570,26 +570,16 @@ export class GameScene extends Phaser.Scene {
   private updateComboDisplay() {
     const { streak, multiplier } = this.state.combo
     const label = multiplier > 1 ? `×${multiplier}  ·  ${streak} HITS` : streak > 1 ? `${streak} HITS` : ''
-    const colors = ['#f8fafc', '#86efac', '#67e8f9', '#c4b5fd', '#fde68a']
-    this.comboText.setText(label).setColor(colors[multiplier - 1] ?? '#fde68a')
+    this.comboText.setText(label).setColor(COMBO_MULTIPLIER_COLOR[multiplier - 1] ?? TEXT_COLOR.gold)
     this.comboText.setScale(1.35)
     this.tweens.add({ targets: this.comboText, scale: 1, duration: 120, ease: 'Back.Out' })
   }
 
   private showHitFeedback(quality: HitQuality, scoreDelta: number) {
-    const labels: Record<HitQuality, string> = {
-      steady: 'STEADY',
-      good: 'GOOD',
-      great: 'GREAT',
-      perfect: 'PERFECT',
-    }
-    const colors: Record<HitQuality, string> = {
-      steady: '#cbd5e1',
-      good: '#86efac',
-      great: '#67e8f9',
-      perfect: '#fde68a',
-    }
-    this.showFeedback(`${labels[quality]}  ×${this.state.combo.multiplier}  +${scoreDelta}`, colors[quality])
+    this.showFeedback(
+      `${QUALITY_LABEL[quality]}  ×${this.state.combo.multiplier}  +${scoreDelta}`,
+      QUALITY_COLOR[quality],
+    )
   }
 
   private playHitEffect(
@@ -599,13 +589,13 @@ export class GameScene extends Phaser.Scene {
     scoreDelta: number,
   ) {
     const multiplier = this.state.combo.multiplier
-    const fill = color === 'red' ? 0xff2d55 : 0x1687ff
+    const fill = BLOCK_COLOR_HEX[color]
     const burstCount = Math.min(16, 3 + multiplier * 2 + (quality === 'perfect' ? 3 : 0))
 
     for (let index = 0; index < burstCount; index += 1) {
       const angle = (Math.PI * 2 * index) / burstCount + Math.random() * 0.35
       const distance = 22 + Math.random() * (18 + multiplier * 5)
-      const spark = this.add.circle(view.x, view.y, 1.5 + Math.random() * 2, fill, 0.9).setDepth(13)
+      const spark = this.add.circle(view.x, view.y, 1.5 + Math.random() * 2, fill, 0.9).setDepth(DEPTH.particles)
       this.tweens.add({
         targets: spark,
         x: view.x + Math.cos(angle) * distance,
@@ -658,15 +648,13 @@ export class GameScene extends Phaser.Scene {
     const activeView = this.blockViews[this.state.path.activeIndex]
     if (!activeView) return
     const outline = activeView.view.first as Phaser.GameObjects.Rectangle
-    const outlineColor = heldColor === 'red' ? 0xff2d55 : heldColor === 'blue' ? 0x1687ff : 0xffffff
+    const outlineColor = heldColor ? BLOCK_COLOR_HEX[heldColor] : 0xffffff
     outline.setStrokeStyle(heldColor === activeView.block.color ? 6 : 3, outlineColor, heldColor ? 1 : 0.22)
   }
 
   private updateColorWash(heldColor: BlockColor | null) {
-    if (heldColor === 'red') {
-      this.colorWash.setFillStyle(0xff2d55).setAlpha(0.1)
-    } else if (heldColor === 'blue') {
-      this.colorWash.setFillStyle(0x1687ff).setAlpha(0.1)
+    if (heldColor) {
+      this.colorWash.setFillStyle(BLOCK_COLOR_HEX[heldColor]).setAlpha(0.1)
     } else {
       this.colorWash.setAlpha(0)
     }
@@ -684,14 +672,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawArena() {
-    this.add.rectangle(400, 250, 760, 150, 0x111a2e).setStrokeStyle(2, 0x334155)
-    this.add.rectangle(CENTER_X, 250, 8, 190, 0xf8fafc, 0.85)
-    this.addText(CENTER_X, 362, 'STAGE WIN', 13, '#64748b').setOrigin(0.5)
-    this.add.rectangle(20, 250, 2, 190, 0xfb7185, 0.45)
-    this.add.rectangle(780, 250, 2, 190, 0xfb7185, 0.45)
+    this.add.rectangle(400, 250, 760, 150, PANEL_COLOR.background).setStrokeStyle(2, PANEL_COLOR.border)
+    this.add.rectangle(CENTER_X, 250, 8, 190, BAR_COLOR.neutralHalo, 0.85)
+    this.addText(CENTER_X, 362, 'STAGE WIN', 13, TEXT_COLOR.subtle).setOrigin(0.5)
+    this.add.rectangle(20, 250, 2, 190, PANEL_COLOR.edgeAccent, 0.45)
+    this.add.rectangle(780, 250, 2, 190, PANEL_COLOR.edgeAccent, 0.45)
   }
 
-  private addText(x: number, y: number, text: string, size: number, color = '#f8fafc') {
+  private addText(x: number, y: number, text: string, size: number, color: string = TEXT_COLOR.default) {
     return this.add.text(x, y, text, {
       color,
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
