@@ -11,6 +11,7 @@ export const gameConfig = {
   comboWindowMs: 900,
   levelTimeLimitMs: 18_000,
   timeReliefPerCorrectMs: 250,
+  extraTimeReliefPerMultiplierStepMs: 100,
   qualityThresholdsMs: {
     perfect: 280,
     great: 500,

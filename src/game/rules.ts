@@ -214,6 +214,7 @@ export function resolveAttempt(
       quality: null,
       scoreDelta: Math.max(0, state.score - gameConfig.penaltyPerMistake) - state.score,
       timeBonus: 0,
+      timeReliefMs: 0,
       state: {
         ...state,
         status: gameOver ? 'game-over' : 'playing',
@@ -235,7 +236,9 @@ export function resolveAttempt(
   const multiplier = getMultiplier(streak)
   const hitPoints = (gameConfig.pointsPerBlock + gameConfig.qualityBonusPoints[quality]) * multiplier
   const pathBonus = pathIsComplete ? gameConfig.pointsPerCompletedPath : 0
-  const timeReliefMs = state.timeReliefMs + gameConfig.timeReliefPerCorrectMs
+  const earnedTimeReliefMs = gameConfig.timeReliefPerCorrectMs
+    + (multiplier - 1) * gameConfig.extraTimeReliefPerMultiplierStepMs
+  const timeReliefMs = state.timeReliefMs + earnedTimeReliefMs
   const effectiveElapsedMs = Math.max(0, attempt.atMs - state.levelStartedAtMs - timeReliefMs)
   const timeBonus = progress >= gameConfig.progressForStageWin
     ? Math.max(0, Math.ceil((gameConfig.levelTimeLimitMs - effectiveElapsedMs) / 1000))
@@ -251,6 +254,7 @@ export function resolveAttempt(
       quality,
       scoreDelta,
       timeBonus,
+      timeReliefMs: earnedTimeReliefMs,
       state: {
         ...state,
         score,
@@ -271,6 +275,7 @@ export function resolveAttempt(
       quality,
       scoreDelta,
       timeBonus: 0,
+      timeReliefMs: earnedTimeReliefMs,
       state: {
         ...state,
         score,
@@ -289,6 +294,7 @@ export function resolveAttempt(
     quality,
     scoreDelta,
     timeBonus: 0,
+    timeReliefMs: earnedTimeReliefMs,
     state: {
       ...state,
       score,
