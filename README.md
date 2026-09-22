@@ -1,5 +1,7 @@
 # Phaser-speeltuin
 
+[![CI](https://github.com/HGRKzkzk/phaser-speeltuin/actions/workflows/ci.yml/badge.svg)](https://github.com/HGRKzkzk/phaser-speeltuin/actions/workflows/ci.yml)
+
 Een kleine, lichte basis om op een Chromebook met [Phaser](https://phaser.io/), TypeScript en Vite te experimenteren.
 
 De demo tekent alles met code, dus je hoeft geen afbeeldingen of andere assets te downloaden.
