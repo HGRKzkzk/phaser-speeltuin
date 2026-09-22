@@ -11,6 +11,7 @@ import {
 } from '../game/rules'
 import type {
   AdventureChoice,
+  AttemptResolution,
   BlockColor,
   BlockDirection,
   GameBlock,
@@ -32,6 +33,19 @@ import {
 type BlockView = {
   block: GameBlock
   view: Phaser.GameObjects.Container
+}
+
+// Payloads voor de 'block-missed'/'block-hit'-events: tryBlock() bepaalt wat
+// er is gebeurd, de geregistreerde handlers bepalen hoe daarop te reageren.
+type BlockMissedContext = {
+  color: BlockColor | null
+  previousMultiplier: number
+}
+
+type BlockHitContext = {
+  activeView: BlockView
+  activeSide: TargetSide
+  nowMs: number
 }
 
 type AdventureChoiceView = {
@@ -131,6 +145,9 @@ export class GameScene extends Phaser.Scene {
     this.rightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT)
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
     this.shiftKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
+
+    this.events.on('block-missed', this.onBlockMissed, this)
+    this.events.on('block-hit', this.onBlockHit, this)
 
     this.startGame()
   }
@@ -273,17 +290,25 @@ export class GameScene extends Phaser.Scene {
     this.moveProgressBar(activeSide)
 
     if (resolution.outcome === 'wrong' || resolution.outcome === 'game-over') {
-      this.comboText.setText(previousMultiplier > 1 ? 'COMBO KWIJT' : '')
-      this.showFeedback(color ? 'MIS  −1' : 'HOUD EERST EEN KLEUR VAST', TEXT_COLOR.danger)
-      this.cameras.main.shake(55, 0.004)
-
-      if (resolution.outcome === 'game-over') {
-        this.inputIsLocked = true
-        this.scheduleOnce(220, () => this.showGameOver('BUITENRAND BEREIKT'))
-      }
+      this.events.emit('block-missed', resolution, { color, previousMultiplier })
       return
     }
 
+    this.events.emit('block-hit', resolution, { activeView, activeSide, nowMs })
+  }
+
+  private onBlockMissed(resolution: AttemptResolution, { color, previousMultiplier }: BlockMissedContext) {
+    this.comboText.setText(previousMultiplier > 1 ? 'COMBO KWIJT' : '')
+    this.showFeedback(color ? 'MIS  −1' : 'HOUD EERST EEN KLEUR VAST', TEXT_COLOR.danger)
+    this.cameras.main.shake(55, 0.004)
+
+    if (resolution.outcome === 'game-over') {
+      this.inputIsLocked = true
+      this.scheduleOnce(220, () => this.showGameOver('BUITENRAND BEREIKT'))
+    }
+  }
+
+  private onBlockHit(resolution: AttemptResolution, { activeView, activeSide, nowMs }: BlockHitContext) {
     this.updateAffinityLights()
     this.pulseAffinity(activeSide, activeView.block.color)
     this.showTimeRelief(resolution.timeReliefMs)
