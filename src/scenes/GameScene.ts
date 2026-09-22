@@ -252,7 +252,7 @@ export class GameScene extends Phaser.Scene {
     if (!activeView) return
 
     const nowMs = this.time.now
-    const previousMultiplier = this.state.combo.multiplier
+    const previousMultiplier = this.state.timing.combo.multiplier
     const resolution = resolveAttempt(this.state, {
       color,
       direction,
@@ -349,7 +349,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private showAdventure() {
-    const adventure = this.state.adventure
+    const adventure = this.state.adventure.active
     if (!adventure) return
 
     const fragment = adventure.story.fragments[adventure.fragmentId]
@@ -405,7 +405,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateAdventure(delta: number) {
-    if (!this.state.adventure) return
+    if (!this.state.adventure.active) return
 
     if (this.shiftKey.isDown) {
       const distance = (ADVENTURE_TRACK_SPEED * delta) / 1000
@@ -595,7 +595,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateComboDisplay() {
-    const { streak, multiplier } = this.state.combo
+    const { streak, multiplier } = this.state.timing.combo
     const label = multiplier > 1 ? `×${multiplier}  ·  ${streak} HITS` : streak > 1 ? `${streak} HITS` : ''
     this.comboText.setText(label).setColor(COMBO_MULTIPLIER_COLOR[multiplier - 1] ?? TEXT_COLOR.gold)
     this.comboText.setScale(1.35)
@@ -604,7 +604,7 @@ export class GameScene extends Phaser.Scene {
 
   private showHitFeedback(quality: HitQuality, scoreDelta: number) {
     this.showFeedback(
-      `${QUALITY_LABEL[quality]}  ×${this.state.combo.multiplier}  +${scoreDelta}`,
+      `${QUALITY_LABEL[quality]}  ×${this.state.timing.combo.multiplier}  +${scoreDelta}`,
       QUALITY_COLOR[quality],
     )
   }
@@ -615,7 +615,7 @@ export class GameScene extends Phaser.Scene {
     quality: HitQuality,
     scoreDelta: number,
   ) {
-    const multiplier = this.state.combo.multiplier
+    const multiplier = this.state.timing.combo.multiplier
     const fill = BLOCK_COLOR_HEX[color]
     const burstCount = Math.min(16, 3 + multiplier * 2 + (quality === 'perfect' ? 3 : 0))
     const lifespanMs = 180 + multiplier * 35
@@ -650,7 +650,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (multiplier === 5 && scoreDelta > 0) {
-      this.comboText.setText(`OVERDRIVE ×5  ·  ${this.state.combo.streak} HITS`)
+      this.comboText.setText(`OVERDRIVE ×5  ·  ${this.state.timing.combo.streak} HITS`)
     }
   }
 

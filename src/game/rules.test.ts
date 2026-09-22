@@ -39,6 +39,21 @@ function buildChainStory(firstAlignment: AdventureAlignment, secondAlignment: Ad
   }
 }
 
+// Zet een state middenin een gegeven avontuur, bij het eerste fragment.
+function stateInAdventure(story: AdventureStory, overrides: Partial<GameState> = {}): GameState {
+  return stateWith({
+    status: 'adventure',
+    adventure: {
+      levelsUntilAdventure: 0,
+      active: { story, fragmentId: story.entryFragmentId, priorAlignments: [] },
+      log: [],
+    },
+    score: 10,
+    level: 5,
+    ...overrides,
+  })
+}
+
 describe('levelgebonden zijde', () => {
   it('wisselt de actieve zijde pas bij een volgend level', () => {
     expect(getTargetSide(1)).toBe('right')
@@ -143,38 +158,43 @@ describe('latente affiniteit', () => {
 describe('tekstavontuur', () => {
   it('trekt bij het begin van een spel een geldige levelafstand', () => {
     const state = createGameState(createSeededRandom(17))
-    expect(gameConfig.adventureLevelGapChoices).toContain(state.levelsUntilAdventure)
-    expect(state.adventure).toBeNull()
-    expect(state.adventureLog).toHaveLength(0)
+    expect(gameConfig.adventure.levelGapChoices).toContain(state.adventure.levelsUntilAdventure)
+    expect(state.adventure.active).toBeNull()
+    expect(state.adventure.log).toHaveLength(0)
   })
 
   it('telt het aantal levels tot het volgende avontuur af bij een stage win', () => {
     const initial = createGameState(createSeededRandom(17))
     const state = stateWith({
-      levelsUntilAdventure: 1,
+      adventure: { ...initial.adventure, levelsUntilAdventure: 1 },
       edgeProgress: { left: 0, right: gameConfig.progressForStageWin - 1 },
       path: initial.path,
     })
     const result = resolveAttempt(state, correctAttempt(state, 5_000))
     expect(result.outcome).toBe('stage-win')
-    expect(result.state.levelsUntilAdventure).toBe(0)
+    expect(result.state.adventure.levelsUntilAdventure).toBe(0)
     expect(isAdventureDue(result.state)).toBe(true)
   })
 
   it('start een tekstavontuur bij het eerste fragment van een verhaal', () => {
-    const due = stateWith({ levelsUntilAdventure: 0, status: 'stage-win' })
+    const due = stateWith({ adventure: { levelsUntilAdventure: 0, active: null, log: [] }, status: 'stage-win' })
     const adventureState = enterAdventure(due, createSeededRandom(5))
     expect(adventureState.status).toBe('adventure')
-    const { story, fragmentId } = adventureState.adventure!
+    const { story, fragmentId } = adventureState.adventure.active!
     expect(fragmentId).toBe(story.entryFragmentId)
     expect(story.fragments[fragmentId].choices.length).toBeGreaterThanOrEqual(2)
-    expect(gameConfig.adventureLevelGapChoices).toContain(adventureState.levelsUntilAdventure)
+    expect(gameConfig.adventure.levelGapChoices).toContain(adventureState.adventure.levelsUntilAdventure)
   })
 
   it('leidt een niet-afsluitende keuze naar het volgende fragment, zonder het level te wisselen', () => {
-    const due = stateWith({ levelsUntilAdventure: 0, status: 'stage-win', score: 12, level: 3 })
+    const due = stateWith({
+      adventure: { levelsUntilAdventure: 0, active: null, log: [] },
+      status: 'stage-win',
+      score: 12,
+      level: 3,
+    })
     const adventureState = enterAdventure(due, createSeededRandom(5))
-    const { story, fragmentId } = adventureState.adventure!
+    const { story, fragmentId } = adventureState.adventure.active!
     const startFragment = story.fragments[fragmentId]
     const choice = startFragment.choices[0]
     expect(choice.next).not.toBe('end')
@@ -184,9 +204,9 @@ describe('tekstavontuur', () => {
     expect(next.status).toBe('adventure')
     expect(next.level).toBe(3)
     expect(next.score).toBe(12)
-    expect(next.adventure?.fragmentId).toBe(choice.next)
-    expect(next.adventure?.priorAlignments).toEqual([choice.alignment])
-    expect(next.adventureLog).toEqual([
+    expect(next.adventure.active?.fragmentId).toBe(choice.next)
+    expect(next.adventure.active?.priorAlignments).toEqual([choice.alignment])
+    expect(next.adventure.log).toEqual([
       { adventureId: story.id, fragmentId: startFragment.id, choiceId: choice.id, alignment: choice.alignment },
     ])
   })
@@ -196,10 +216,10 @@ describe('tekstavontuur', () => {
       { id: 'c-bold', label: 'c-bold', description: '', alignment: 'bold', next: 'end' },
       { id: 'c-wary', label: 'c-wary', description: '', alignment: 'wary', next: 'end' },
     ])
-    const due = stateWith({ status: 'adventure', adventure: { story, fragmentId: 'a', priorAlignments: [] }, score: 10, level: 5 })
+    const due = stateInAdventure(story)
     const afterA = chooseAdventureOption(due, 0)
     const afterB = chooseAdventureOption(afterA, 0)
-    expect(afterB.adventure?.priorAlignments).toEqual(['bold', 'bold'])
+    expect(afterB.adventure.active?.priorAlignments).toEqual(['bold', 'bold'])
 
     const final = chooseAdventureOption(afterB, 0)
     expect(final.status).toBe('playing')
@@ -211,13 +231,13 @@ describe('tekstavontuur', () => {
       { id: 'c-bold', label: 'c-bold', description: '', alignment: 'bold', next: 'end' },
       { id: 'c-wary', label: 'c-wary', description: '', alignment: 'wary', next: 'end' },
     ])
-    const due = stateWith({ status: 'adventure', adventure: { story, fragmentId: 'a', priorAlignments: [] }, score: 10, level: 5 })
+    const due = stateInAdventure(story)
     const afterA = chooseAdventureOption(due, 0)
     const afterB = chooseAdventureOption(afterA, 0)
 
     const final = chooseAdventureOption(afterB, 1)
     expect(final.status).toBe('playing')
-    expect(final.score).toBe(10 + gameConfig.adventureDefianceBonus)
+    expect(final.score).toBe(10 + gameConfig.adventure.defianceBonus)
   })
 
   it('kent geen bonus toe als de voorgaande houdingen elkaar in evenwicht houden', () => {
@@ -225,10 +245,10 @@ describe('tekstavontuur', () => {
       { id: 'c-bold', label: 'c-bold', description: '', alignment: 'bold', next: 'end' },
       { id: 'c-wary', label: 'c-wary', description: '', alignment: 'wary', next: 'end' },
     ])
-    const due = stateWith({ status: 'adventure', adventure: { story, fragmentId: 'a', priorAlignments: [] }, score: 10, level: 5 })
+    const due = stateInAdventure(story)
     const afterA = chooseAdventureOption(due, 0)
     const afterB = chooseAdventureOption(afterA, 0)
-    expect(afterB.adventure?.priorAlignments).toEqual(['bold', 'wary'])
+    expect(afterB.adventure.active?.priorAlignments).toEqual(['bold', 'wary'])
 
     const finalBold = chooseAdventureOption(afterB, 0)
     const finalWary = chooseAdventureOption(afterB, 1)
@@ -237,9 +257,14 @@ describe('tekstavontuur', () => {
   })
 
   it('doorloopt een volledig avontuur tot het einde en gaat dan direct verder met het volgende level', () => {
-    const due = stateWith({ levelsUntilAdventure: 0, status: 'stage-win', score: 12, level: 3 })
+    const due = stateWith({
+      adventure: { levelsUntilAdventure: 0, active: null, log: [] },
+      status: 'stage-win',
+      score: 12,
+      level: 3,
+    })
     let state = enterAdventure(due, createSeededRandom(5))
-    const storyId = state.adventure!.story.id
+    const storyId = state.adventure.active!.story.id
 
     let steps = 0
     while (state.status === 'adventure' && steps < 10) {
@@ -250,10 +275,10 @@ describe('tekstavontuur', () => {
     expect(state.status).toBe('playing')
     expect(state.level).toBe(4)
     expect(state.score).toBe(12)
-    expect(state.adventure).toBeNull()
-    expect(state.adventureLog.length).toBe(steps)
-    expect(state.adventureLog.every((entry) => entry.adventureId === storyId)).toBe(true)
-    expect(state.adventureLog.at(-1)?.choiceId).toBeDefined()
+    expect(state.adventure.active).toBeNull()
+    expect(state.adventure.log.length).toBe(steps)
+    expect(state.adventure.log.every((entry) => entry.adventureId === storyId)).toBe(true)
+    expect(state.adventure.log.at(-1)?.choiceId).toBeDefined()
   })
 
   it('weigert een keuze buiten een tekstavontuur', () => {
@@ -262,7 +287,7 @@ describe('tekstavontuur', () => {
   })
 
   it('weigert een ongeldige keuze-index tijdens een tekstavontuur', () => {
-    const due = stateWith({ levelsUntilAdventure: 0, status: 'stage-win' })
+    const due = stateWith({ adventure: { levelsUntilAdventure: 0, active: null, log: [] }, status: 'stage-win' })
     const adventureState = enterAdventure(due, createSeededRandom(5))
     expect(() => chooseAdventureOption(adventureState, 99)).toThrow()
   })
@@ -284,14 +309,14 @@ describe('tijd, kwaliteit en combo', () => {
       state = result.state
       thirdScoreDelta = result.scoreDelta
     }
-    expect(state.combo.streak).toBe(3)
-    expect(state.combo.multiplier).toBe(2)
+    expect(state.timing.combo.streak).toBe(3)
+    expect(state.timing.combo.multiplier).toBe(2)
     expect(thirdScoreDelta).toBe(
-      (gameConfig.pointsPerBlock + gameConfig.qualityBonusPoints.perfect) * 2,
+      (gameConfig.pointsPerBlock + gameConfig.timing.qualityBonusPoints.perfect) * 2,
     )
     expect(getMultiplier(15)).toBe(5)
-    expect(state.timeReliefMs).toBe(
-      3 * gameConfig.timeReliefPerCorrectMs + gameConfig.extraTimeReliefPerMultiplierStepMs,
+    expect(state.timing.timeReliefMs).toBe(
+      3 * gameConfig.timing.timeReliefPerCorrectMs + gameConfig.timing.extraTimeReliefPerMultiplierStepMs,
     )
   })
 
@@ -299,13 +324,13 @@ describe('tijd, kwaliteit en combo', () => {
     const initial = createGameState(createSeededRandom(17), 0)
     const hit = resolveAttempt(initial, correctAttempt(initial, 300, 250)).state
     const result = resolveAttempt(hit, { color: null, direction: 'up', atMs: 500, responseMs: 200 })
-    expect(result.state.combo).toEqual({ streak: 0, multiplier: 1, lastCorrectAtMs: null })
+    expect(result.state.timing.combo).toEqual({ streak: 0, multiplier: 1, lastCorrectAtMs: null })
   })
 
   it('geeft bij een snelle stage-clear een afzonderlijke tijdbonus', () => {
     const initial = createGameState(createSeededRandom(17), 0)
     const state = stateWith({
-      levelStartedAtMs: 0,
+      timing: { ...initial.timing, levelStartedAtMs: 0 },
       edgeProgress: { left: 0, right: gameConfig.progressForStageWin - 1 },
       path: initial.path,
     })
@@ -318,8 +343,8 @@ describe('tijd, kwaliteit en combo', () => {
   it('laat de tijdsdruk lineair van buitenrand naar midden lopen', () => {
     const state = createGameState(createSeededRandom(17), 1_000)
     expect(getTimePressure(state, 1_000)).toBe(0)
-    expect(getTimePressure(state, 1_000 + gameConfig.levelTimeLimitMs / 2)).toBe(0.5)
-    expect(getTimePressure(state, 1_000 + gameConfig.levelTimeLimitMs)).toBe(1)
+    expect(getTimePressure(state, 1_000 + gameConfig.timing.levelTimeLimitMs / 2)).toBe(0.5)
+    expect(getTimePressure(state, 1_000 + gameConfig.timing.levelTimeLimitMs)).toBe(1)
   })
 
   it('duwt de rode tijdslijn bij iedere correcte treffer een beetje terug', () => {
@@ -327,7 +352,7 @@ describe('tijd, kwaliteit en combo', () => {
     const before = getTimePressure(initial, 9_000)
     const afterHit = resolveAttempt(initial, correctAttempt(initial, 9_000, 250)).state
 
-    expect(afterHit.timeReliefMs).toBe(gameConfig.timeReliefPerCorrectMs)
+    expect(afterHit.timing.timeReliefMs).toBe(gameConfig.timing.timeReliefPerCorrectMs)
     expect(getTimePressure(afterHit, 9_000)).toBeLessThan(before)
   })
 
@@ -341,7 +366,7 @@ describe('tijd, kwaliteit en combo', () => {
       atMs += 500
       const result = resolveAttempt(state, correctAttempt(state, atMs, hit === 1 ? atMs : 500))
       state = result.state
-      reliefByMultiplier.set(state.combo.multiplier, result.timeReliefMs)
+      reliefByMultiplier.set(state.timing.combo.multiplier, result.timeReliefMs)
       if (hit === 9) pressureBeforeHighCombo = getTimePressure(state, atMs)
     }
 
@@ -359,24 +384,24 @@ describe('tijd, kwaliteit en combo', () => {
       atMs += 500
       state = resolveAttempt(state, correctAttempt(state, atMs, 500)).state
     }
-    expect(state.combo.multiplier).toBe(2)
-    const savedTimeReliefMs = state.timeReliefMs
+    expect(state.timing.combo.multiplier).toBe(2)
+    const savedTimeReliefMs = state.timing.timeReliefMs
 
     if (cause === 'fout') {
       atMs += 100
       const miss = resolveAttempt(state, { color: null, direction: 'up', atMs, responseMs: 100 })
       expect(miss.timeReliefMs).toBe(0)
-      expect(miss.state.timeReliefMs).toBe(savedTimeReliefMs)
+      expect(miss.state.timing.timeReliefMs).toBe(savedTimeReliefMs)
       state = miss.state
     } else {
-      atMs += gameConfig.comboWindowMs
+      atMs += gameConfig.timing.comboWindowMs
     }
 
     atMs += 100
     const nextHit = resolveAttempt(state, correctAttempt(state, atMs, 100))
-    expect(nextHit.state.combo.multiplier).toBe(1)
-    expect(nextHit.timeReliefMs).toBe(gameConfig.timeReliefPerCorrectMs)
-    expect(nextHit.state.timeReliefMs).toBe(savedTimeReliefMs + gameConfig.timeReliefPerCorrectMs)
+    expect(nextHit.state.timing.combo.multiplier).toBe(1)
+    expect(nextHit.timeReliefMs).toBe(gameConfig.timing.timeReliefPerCorrectMs)
+    expect(nextHit.state.timing.timeReliefMs).toBe(savedTimeReliefMs + gameConfig.timing.timeReliefPerCorrectMs)
   })
 
   it('laat de tijd bij een langzaam speeltempo netto oprukken', () => {
@@ -386,13 +411,13 @@ describe('tijd, kwaliteit en combo', () => {
       state = resolveAttempt(state, correctAttempt(state, atMs, 1_200)).state
     }
 
-    expect(state.timeReliefMs).toBe(3 * gameConfig.timeReliefPerCorrectMs)
+    expect(state.timing.timeReliefMs).toBe(3 * gameConfig.timing.timeReliefPerCorrectMs)
     expect(getTimePressure(state, 6_000)).toBeGreaterThan(0.25)
   })
 
   it('geeft game over wanneer de rode tijdslijn het midden bereikt', () => {
     const state = createGameState(createSeededRandom(17), 1_000)
-    const result = resolveTimePressure(state, 1_000 + gameConfig.levelTimeLimitMs)
+    const result = resolveTimePressure(state, 1_000 + gameConfig.timing.levelTimeLimitMs)
     expect(result.outcome).toBe('game-over')
     expect(result.state.status).toBe('game-over')
   })
