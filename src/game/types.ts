@@ -94,6 +94,7 @@ export type AttemptResolution = {
   quality: HitQuality | null
   scoreDelta: number
   timeBonus: number
+  timeReliefMs: number
 }
 
 export type TimePressureResolution = {

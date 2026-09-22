@@ -248,7 +248,7 @@ export class GameScene extends Phaser.Scene {
 
     this.updateAffinityLights()
     this.pulseAffinity(activeSide, activeView.block.color)
-    this.showTimeRelief()
+    this.showTimeRelief(resolution.timeReliefMs)
     this.updateComboDisplay()
     this.playHitEffect(activeView.view, activeView.block.color, resolution.quality!, resolution.scoreDelta)
     this.activeSinceMs = nowMs
@@ -520,11 +520,11 @@ export class GameScene extends Phaser.Scene {
     return false
   }
 
-  private showTimeRelief() {
+  private showTimeRelief(timeReliefMs: number) {
     const dangerSide: TargetSide = this.state.path.targetSide === 'left' ? 'right' : 'left'
     const dangerBar = this.progressBars[dangerSide]
     const x = dangerBar.container.x + (dangerSide === 'left' ? 22 : -22)
-    const reliefSeconds = (gameConfig.timeReliefPerCorrectMs / 1000).toLocaleString('nl-NL')
+    const reliefSeconds = (timeReliefMs / 1000).toLocaleString('nl-NL')
     const label = this.addText(x, 145, `+${reliefSeconds}s`, 13, '#67e8f9')
       .setOrigin(0.5)
       .setDepth(12)

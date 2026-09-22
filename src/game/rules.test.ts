@@ -290,6 +290,9 @@ describe('tijd, kwaliteit en combo', () => {
       (gameConfig.pointsPerBlock + gameConfig.qualityBonusPoints.perfect) * 2,
     )
     expect(getMultiplier(15)).toBe(5)
+    expect(state.timeReliefMs).toBe(
+      3 * gameConfig.timeReliefPerCorrectMs + gameConfig.extraTimeReliefPerMultiplierStepMs,
+    )
   })
 
   it('breekt de combo bij een fout', () => {
@@ -326,6 +329,54 @@ describe('tijd, kwaliteit en combo', () => {
 
     expect(afterHit.timeReliefMs).toBe(gameConfig.timeReliefPerCorrectMs)
     expect(getTimePressure(afterHit, 9_000)).toBeLessThan(before)
+  })
+
+  it('koopt met een hogere combo per treffer meer tijd terug', () => {
+    let state = createGameState(createSeededRandom(17), 0)
+    const reliefByMultiplier = new Map<number, number>()
+    let pressureBeforeHighCombo = 0
+    let atMs = 3_500
+
+    for (let hit = 1; hit <= gameConfig.progressForStageWin; hit += 1) {
+      atMs += 500
+      const result = resolveAttempt(state, correctAttempt(state, atMs, hit === 1 ? atMs : 500))
+      state = result.state
+      reliefByMultiplier.set(state.combo.multiplier, result.timeReliefMs)
+      if (hit === 9) pressureBeforeHighCombo = getTimePressure(state, atMs)
+    }
+
+    expect([...reliefByMultiplier.entries()]).toEqual([
+      [1, 250], [2, 350], [3, 450], [4, 550], [5, 650],
+    ])
+    expect(state.status).toBe('stage-win')
+    expect(getTimePressure(state, atMs)).toBeLessThan(pressureBeforeHighCombo)
+  })
+
+  it.each(['pauze', 'fout'] as const)('verliest extra tijdswinst na een %s', (cause) => {
+    let state = createGameState(createSeededRandom(17), 0)
+    let atMs = 0
+    for (let hit = 0; hit < 3; hit += 1) {
+      atMs += 500
+      state = resolveAttempt(state, correctAttempt(state, atMs, 500)).state
+    }
+    expect(state.combo.multiplier).toBe(2)
+    const savedTimeReliefMs = state.timeReliefMs
+
+    if (cause === 'fout') {
+      atMs += 100
+      const miss = resolveAttempt(state, { color: null, direction: 'up', atMs, responseMs: 100 })
+      expect(miss.timeReliefMs).toBe(0)
+      expect(miss.state.timeReliefMs).toBe(savedTimeReliefMs)
+      state = miss.state
+    } else {
+      atMs += gameConfig.comboWindowMs
+    }
+
+    atMs += 100
+    const nextHit = resolveAttempt(state, correctAttempt(state, atMs, 100))
+    expect(nextHit.state.combo.multiplier).toBe(1)
+    expect(nextHit.timeReliefMs).toBe(gameConfig.timeReliefPerCorrectMs)
+    expect(nextHit.state.timeReliefMs).toBe(savedTimeReliefMs + gameConfig.timeReliefPerCorrectMs)
   })
 
   it('laat de tijd bij een langzaam speeltempo netto oprukken', () => {
