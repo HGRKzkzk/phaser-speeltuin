@@ -59,12 +59,9 @@ export function createEmptyAffinity(): AffinityMatrix {
 export function createPath(level: number, random: RandomSource = Math.random): PathState {
   const targetSide = getTargetSide(level)
   const directions: BlockDirection[] = ['up', targetSide]
-  const combinations: GameBlock[] = COLORS.flatMap((color) =>
-    directions.map((direction) => ({ color, direction })),
-  )
-  const pool = Array.from(
-    { length: Math.ceil(gameConfig.blocksPerPath / combinations.length) },
-    () => combinations.map((block) => ({ ...block })),
+  const combinations: GameBlock[] = COLORS.flatMap((color) => directions.map((direction) => ({ color, direction })))
+  const pool = Array.from({ length: Math.ceil(gameConfig.blocksPerPath / combinations.length) }, () =>
+    combinations.map((block) => ({ ...block })),
   ).flat()
 
   for (let index = pool.length - 1; index > 0; index -= 1) {
@@ -244,19 +241,21 @@ export function resolveAttempt(
   const pathIsComplete = activeIndex === state.path.blocks.length
   const completedPaths = state.completedPaths + (pathIsComplete ? 1 : 0)
   const quality = classifyHitQuality(attempt.responseMs)
-  const continuesCombo = state.timing.combo.lastCorrectAtMs !== null
-    && attempt.atMs - state.timing.combo.lastCorrectAtMs <= gameConfig.timing.comboWindowMs
+  const continuesCombo =
+    state.timing.combo.lastCorrectAtMs !== null &&
+    attempt.atMs - state.timing.combo.lastCorrectAtMs <= gameConfig.timing.comboWindowMs
   const streak = continuesCombo ? state.timing.combo.streak + 1 : 1
   const multiplier = getMultiplier(streak)
   const hitPoints = (gameConfig.pointsPerBlock + gameConfig.timing.qualityBonusPoints[quality]) * multiplier
   const pathBonus = pathIsComplete ? gameConfig.pointsPerCompletedPath : 0
-  const earnedTimeReliefMs = gameConfig.timing.timeReliefPerCorrectMs
-    + (multiplier - 1) * gameConfig.timing.extraTimeReliefPerMultiplierStepMs
+  const earnedTimeReliefMs =
+    gameConfig.timing.timeReliefPerCorrectMs + (multiplier - 1) * gameConfig.timing.extraTimeReliefPerMultiplierStepMs
   const timeReliefMs = state.timing.timeReliefMs + earnedTimeReliefMs
   const effectiveElapsedMs = Math.max(0, attempt.atMs - state.timing.levelStartedAtMs - timeReliefMs)
-  const timeBonus = progress >= gameConfig.progressForStageWin
-    ? Math.max(0, Math.ceil((gameConfig.timing.levelTimeLimitMs - effectiveElapsedMs) / 1000))
-    : 0
+  const timeBonus =
+    progress >= gameConfig.progressForStageWin
+      ? Math.max(0, Math.ceil((gameConfig.timing.levelTimeLimitMs - effectiveElapsedMs) / 1000))
+      : 0
   const scoreDelta = hitPoints + pathBonus + timeBonus
   const score = state.score + scoreDelta
   const affinity = recordCorrect(state.affinity, activeSide, activeBlock.color)

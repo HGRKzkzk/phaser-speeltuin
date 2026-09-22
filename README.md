@@ -80,6 +80,15 @@ npm test
 
 De tests bewaken puntentelling, timing, kwaliteit, combo, balkvoortgang, levelovergangen, de gebalanceerde blokkenzak, latente affiniteit en het tekstavontuur.
 
+## Linten en formatteren
+
+```bash
+npm run lint
+npm run format
+```
+
+ESLint bewaakt veelvoorkomende TypeScript-fouten, Prettier houdt de stijl consistent. `npm run format:check` (gebruikt in CI) faalt als bestanden niet geformatteerd zijn zonder ze aan te passen.
+
 ## Productiebuild controleren
 
 ```bash
