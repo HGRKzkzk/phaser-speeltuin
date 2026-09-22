@@ -23,19 +23,19 @@ export function getTargetSide(level: number): TargetSide {
 }
 
 export function classifyHitQuality(responseMs: number): HitQuality {
-  if (responseMs <= gameConfig.qualityThresholdsMs.perfect) return 'perfect'
-  if (responseMs <= gameConfig.qualityThresholdsMs.great) return 'great'
-  if (responseMs <= gameConfig.qualityThresholdsMs.good) return 'good'
+  if (responseMs <= gameConfig.timing.qualityThresholdsMs.perfect) return 'perfect'
+  if (responseMs <= gameConfig.timing.qualityThresholdsMs.great) return 'great'
+  if (responseMs <= gameConfig.timing.qualityThresholdsMs.good) return 'good'
   return 'steady'
 }
 
 export function getMultiplier(streak: number) {
-  return gameConfig.multiplierThresholds.find((step) => streak >= step.streak)?.multiplier ?? 1
+  return gameConfig.timing.multiplierThresholds.find((step) => streak >= step.streak)?.multiplier ?? 1
 }
 
 export function getTimePressure(state: GameState, nowMs: number) {
-  const effectiveElapsedMs = Math.max(0, nowMs - state.levelStartedAtMs - state.timeReliefMs)
-  return Math.min(1, effectiveElapsedMs / gameConfig.levelTimeLimitMs)
+  const effectiveElapsedMs = Math.max(0, nowMs - state.timing.levelStartedAtMs - state.timing.timeReliefMs)
+  return Math.min(1, effectiveElapsedMs / gameConfig.timing.levelTimeLimitMs)
 }
 
 export function resolveTimePressure(state: GameState, nowMs: number): TimePressureResolution {
@@ -90,7 +90,7 @@ function recordCorrect(affinity: AffinityMatrix, side: TargetSide, color: BlockC
 }
 
 function pickAdventureGap(random: RandomSource): number {
-  const choices = gameConfig.adventureLevelGapChoices
+  const choices = gameConfig.adventure.levelGapChoices
   return choices[Math.floor(random() * choices.length)]
 }
 
@@ -111,13 +111,17 @@ export function createGameState(random: RandomSource = Math.random, nowMs = 0): 
     completedPaths: 0,
     edgeProgress: { left: 0, right: 0 },
     affinity: recordShown(createEmptyAffinity(), path),
-    combo: { streak: 0, multiplier: 1, lastCorrectAtMs: null },
-    levelStartedAtMs: nowMs,
-    timeReliefMs: 0,
+    timing: {
+      levelStartedAtMs: nowMs,
+      timeReliefMs: 0,
+      combo: { streak: 0, multiplier: 1, lastCorrectAtMs: null },
+    },
     path,
-    levelsUntilAdventure: pickAdventureGap(random),
-    adventure: null,
-    adventureLog: [],
+    adventure: {
+      levelsUntilAdventure: pickAdventureGap(random),
+      active: null,
+      log: [],
+    },
   }
 }
 
@@ -131,18 +135,22 @@ export function startNextLevel(state: GameState, random: RandomSource = Math.ran
     completedPaths: 0,
     edgeProgress: { left: 0, right: 0 },
     affinity: recordShown(state.affinity, path),
-    combo: { streak: 0, multiplier: 1, lastCorrectAtMs: null },
-    levelStartedAtMs: nowMs,
-    timeReliefMs: 0,
+    timing: {
+      levelStartedAtMs: nowMs,
+      timeReliefMs: 0,
+      combo: { streak: 0, multiplier: 1, lastCorrectAtMs: null },
+    },
     path,
-    levelsUntilAdventure: state.levelsUntilAdventure,
-    adventure: null,
-    adventureLog: state.adventureLog,
+    adventure: {
+      levelsUntilAdventure: state.adventure.levelsUntilAdventure,
+      active: null,
+      log: state.adventure.log,
+    },
   }
 }
 
 export function isAdventureDue(state: GameState): boolean {
-  return state.levelsUntilAdventure <= 0
+  return state.adventure.levelsUntilAdventure <= 0
 }
 
 export function enterAdventure(state: GameState, random: RandomSource = Math.random): GameState {
@@ -150,8 +158,11 @@ export function enterAdventure(state: GameState, random: RandomSource = Math.ran
   return {
     ...state,
     status: 'adventure',
-    adventure: { story, fragmentId: story.entryFragmentId, priorAlignments: [] },
-    levelsUntilAdventure: pickAdventureGap(random),
+    adventure: {
+      levelsUntilAdventure: pickAdventureGap(random),
+      active: { story, fragmentId: story.entryFragmentId, priorAlignments: [] },
+      log: state.adventure.log,
+    },
   }
 }
 
@@ -161,33 +172,36 @@ export function chooseAdventureOption(
   random: RandomSource = Math.random,
   nowMs = 0,
 ): GameState {
-  if (state.status !== 'adventure' || !state.adventure) {
+  if (state.status !== 'adventure' || !state.adventure.active) {
     throw new Error('Een keuze is alleen toegestaan tijdens een tekstavontuur.')
   }
 
-  const { story, fragmentId, priorAlignments } = state.adventure
+  const { story, fragmentId, priorAlignments } = state.adventure.active
   const fragment = story.fragments[fragmentId]
   const choice = fragment.choices[choiceIndex]
   if (!choice) {
     throw new Error('Ongeldige keuze-index.')
   }
 
-  const adventureLog = [
-    ...state.adventureLog,
+  const log = [
+    ...state.adventure.log,
     { adventureId: story.id, fragmentId: fragment.id, choiceId: choice.id, alignment: choice.alignment },
   ]
 
   if (choice.next !== 'end') {
     return {
       ...state,
-      adventure: { story, fragmentId: choice.next, priorAlignments: [...priorAlignments, choice.alignment] },
-      adventureLog,
+      adventure: {
+        ...state.adventure,
+        active: { story, fragmentId: choice.next, priorAlignments: [...priorAlignments, choice.alignment] },
+        log,
+      },
     }
   }
 
-  const bonus = isDefiantChoice(priorAlignments, choice.alignment) ? gameConfig.adventureDefianceBonus : 0
+  const bonus = isDefiantChoice(priorAlignments, choice.alignment) ? gameConfig.adventure.defianceBonus : 0
   return startNextLevel(
-    { ...state, adventure: null, adventureLog, score: state.score + bonus },
+    { ...state, adventure: { ...state.adventure, active: null, log }, score: state.score + bonus },
     random,
     nowMs,
   )
@@ -220,7 +234,7 @@ export function resolveAttempt(
         status: gameOver ? 'game-over' : 'playing',
         score: Math.max(0, state.score - gameConfig.penaltyPerMistake),
         edgeProgress: { ...state.edgeProgress, [activeSide]: progress },
-        combo: { streak: 0, multiplier: 1, lastCorrectAtMs: null },
+        timing: { ...state.timing, combo: { streak: 0, multiplier: 1, lastCorrectAtMs: null } },
       },
     }
   }
@@ -230,18 +244,18 @@ export function resolveAttempt(
   const pathIsComplete = activeIndex === state.path.blocks.length
   const completedPaths = state.completedPaths + (pathIsComplete ? 1 : 0)
   const quality = classifyHitQuality(attempt.responseMs)
-  const continuesCombo = state.combo.lastCorrectAtMs !== null
-    && attempt.atMs - state.combo.lastCorrectAtMs <= gameConfig.comboWindowMs
-  const streak = continuesCombo ? state.combo.streak + 1 : 1
+  const continuesCombo = state.timing.combo.lastCorrectAtMs !== null
+    && attempt.atMs - state.timing.combo.lastCorrectAtMs <= gameConfig.timing.comboWindowMs
+  const streak = continuesCombo ? state.timing.combo.streak + 1 : 1
   const multiplier = getMultiplier(streak)
-  const hitPoints = (gameConfig.pointsPerBlock + gameConfig.qualityBonusPoints[quality]) * multiplier
+  const hitPoints = (gameConfig.pointsPerBlock + gameConfig.timing.qualityBonusPoints[quality]) * multiplier
   const pathBonus = pathIsComplete ? gameConfig.pointsPerCompletedPath : 0
-  const earnedTimeReliefMs = gameConfig.timeReliefPerCorrectMs
-    + (multiplier - 1) * gameConfig.extraTimeReliefPerMultiplierStepMs
-  const timeReliefMs = state.timeReliefMs + earnedTimeReliefMs
-  const effectiveElapsedMs = Math.max(0, attempt.atMs - state.levelStartedAtMs - timeReliefMs)
+  const earnedTimeReliefMs = gameConfig.timing.timeReliefPerCorrectMs
+    + (multiplier - 1) * gameConfig.timing.extraTimeReliefPerMultiplierStepMs
+  const timeReliefMs = state.timing.timeReliefMs + earnedTimeReliefMs
+  const effectiveElapsedMs = Math.max(0, attempt.atMs - state.timing.levelStartedAtMs - timeReliefMs)
   const timeBonus = progress >= gameConfig.progressForStageWin
-    ? Math.max(0, Math.ceil((gameConfig.levelTimeLimitMs - effectiveElapsedMs) / 1000))
+    ? Math.max(0, Math.ceil((gameConfig.timing.levelTimeLimitMs - effectiveElapsedMs) / 1000))
     : 0
   const scoreDelta = hitPoints + pathBonus + timeBonus
   const score = state.score + scoreDelta
@@ -262,9 +276,11 @@ export function resolveAttempt(
         completedPaths,
         edgeProgress: { ...state.edgeProgress, [activeSide]: progress },
         affinity,
-        levelsUntilAdventure: Math.max(0, state.levelsUntilAdventure - 1),
-        combo,
-        timeReliefMs,
+        adventure: {
+          ...state.adventure,
+          levelsUntilAdventure: Math.max(0, state.adventure.levelsUntilAdventure - 1),
+        },
+        timing: { ...state.timing, combo, timeReliefMs },
       },
     }
   }
@@ -281,8 +297,7 @@ export function resolveAttempt(
         score,
         edgeProgress: { ...state.edgeProgress, [activeSide]: progress },
         affinity,
-        combo,
-        timeReliefMs,
+        timing: { ...state.timing, combo, timeReliefMs },
         path: { ...state.path, activeIndex },
       },
     }
@@ -301,8 +316,7 @@ export function resolveAttempt(
       completedPaths,
       edgeProgress: { ...state.edgeProgress, [activeSide]: progress },
       affinity: recordShown(affinity, path),
-      combo,
-      timeReliefMs,
+      timing: { ...state.timing, combo, timeReliefMs },
       path,
     },
   }

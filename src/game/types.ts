@@ -63,6 +63,18 @@ export type AdventureChoiceRecord = {
   alignment: AdventureAlignment
 }
 
+export type TimingState = {
+  levelStartedAtMs: number
+  timeReliefMs: number
+  combo: ComboState
+}
+
+export type AdventureState = {
+  levelsUntilAdventure: number
+  active: ActiveAdventure | null
+  log: AdventureChoiceRecord[]
+}
+
 export type GameState = {
   score: number
   level: number
@@ -70,13 +82,9 @@ export type GameState = {
   completedPaths: number
   edgeProgress: Record<TargetSide, number>
   affinity: AffinityMatrix
-  combo: ComboState
-  levelStartedAtMs: number
-  timeReliefMs: number
+  timing: TimingState
   path: PathState
-  levelsUntilAdventure: number
-  adventure: ActiveAdventure | null
-  adventureLog: AdventureChoiceRecord[]
+  adventure: AdventureState
 }
 
 export type PlayerAttempt = {

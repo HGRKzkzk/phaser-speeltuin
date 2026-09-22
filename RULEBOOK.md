@@ -52,7 +52,7 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - Welke keuze de keuzewijzer op dat moment aanwijst, wordt slechts als kleine, terughoudende aanwijzing getoond; nooit als een expliciete tekstuele instructie op de keuze zelf.
 - Een gemaakte keuze leidt naar het volgende fragment van hetzelfde avontuur, of beëindigt het avontuur; nooit allebei tegelijk.
 - Elke keuze in een tekstavontuur draagt een houding: gedurfd of behoedzaam.
-- Is er onder de keuzes vóór de laatste keuze van het avontuur een overwicht, en wijkt de houding van de laatste keuze daarvan af, dan levert dat een bonus van `adventureDefianceBonus` punten op.
+- Is er onder de keuzes vóór de laatste keuze van het avontuur een overwicht, en wijkt de houding van de laatste keuze daarvan af, dan levert dat een bonus van `adventure.defianceBonus` punten op.
 - Volgt de laatste keuze het overwicht, of is er geen overwicht, dan levert de laatste keuze geen bonus op.
 - Deze bonus is de enige score-invloed van een tekstavontuur; geen enkele andere keuze levert punten op of af, en het levelnummer wisselt niet tijdens het doorlopen ervan.
 - Zodra het avontuur eindigt, wordt de eventuele bonus toegekend en begint direct het volgende level, met dezelfde levelwissel van zijde als daarbuiten.
