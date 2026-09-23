@@ -15,9 +15,14 @@ export const gameConfig = {
     closeArrivalFraction: 0.2,
     fluentArrivalStreak: 6,
   },
+  shelter: {
+    approaches: {
+      lift: { grouping: 'color', caption: 'DEUR OPTILLEN · KLEUREN BIJ ELKAAR' },
+      hinges: { grouping: 'direction', caption: 'SCHARNIEREN LOSMAKEN · PIJLEN BIJ ELKAAR' },
+    },
+  },
   adventure: {
     levelGapChoices: [2, 3, 4],
-    defianceBonus: 5,
   },
   timing: {
     comboWindowMs: 900,

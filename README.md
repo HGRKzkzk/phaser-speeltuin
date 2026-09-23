@@ -23,13 +23,13 @@ Een goed blok beweegt de witte balk aan de actieve zijde naar het midden en duwt
 
 Rood en blauw bepalen alleen de kleur, niet de speelrichting. Bij het vasthouden van `A` of `D` krijgt het hele speelveld een subtiele gloed in de gekozen kleur. Vier kleine lichtpunten bouwen vanaf het begin mee met correct gespeelde blokken voor rood/blauw × links/rechts. Deze affiniteit blijft tussen levels bewaard, maar heeft nog geen spelmechanisch gevolg.
 
-Na het eerste level ontmoet je Noor, ook als de tijd op is. Je belooft samen vóór het donker een schuilplaats te bereiken. Je kiest de open vlakte (14 treffers, 16 seconden) of de beschutte route (28 treffers, 32 seconden). De route verandert het volgende lijnlevel: wit is jullie voortgang, rood het naderende donker. Bij aankomst reageert Noor op jullie tempo en fouten; ook een moeizame overwinning krijgt een eigen, waardevolle reactie. Is de tijd op, dan bereiken jullie de schuilplaats na het donker en gaat het verhaal door. Noor herinnert zich de tocht in latere avonturen. Tijdens het lezen staat de tijd stil. Een nieuwe run wist deze herinnering.
+Na het eerste level ontmoet je Noor, ook als de tijd op is. Jullie willen samen vóór het donker een schuilplaats bereiken. Je kiest de open vlakte (14 treffers, 16 seconden) of de beschutte route (28 treffers, 32 seconden). Bij de schuilplaats klemt de deur en klinkt getik. Luisteren en onderzoeken leveren verschillende aanwijzingen op; je kunt beide doen voordat je een aanpak kiest.
 
-Daarnaast wacht na willekeurig 2, 3 of 4 levels een tekstavontuur van een paar fragmenten voordat het volgende level begint. Houd `Shift` vast om de kleinere, lager geplaatste keuzewijzer heen en weer te laten bewegen tussen de keuzes; laat los om hem stil te zetten. Druk op de spatiebalk om de keuze te bevestigen waar de wijzer op dat moment op staat; welke keuze dat is, wordt slechts als klein, terughoudend puntje getoond, nooit als expliciete tekst op de keuze zelf. Iedere keuze leidt naar het volgende fragment van hetzelfde avontuur of beëindigt het; pas dan begint het volgende level.
+Die aanpak verandert precies één volgend lijnlevel. **Deur optillen** groepeert de kleuren per pad, zodat je minder vaak van kleur wisselt. **Scharnieren losmaken** groepeert de richtingen, zodat je minder vaak van pijl wisselt. Het aanbod van kleur-richtingcombinaties blijft gelijk. Je opent de deur, of vindt bij tijdsverloop een droge bank onder het afdak. Beide aflopen gaan via een rustmoment naar het volgende level met gewone blokken. Noor onthoudt de afloop in latere avonturen; een nieuwe run wist die herinnering.
 
-In de gewone tekstavonturen draagt elke keuze een houding: gedurfd of behoedzaam, zonder dat de een beter is dan de ander. Vormen de keuzes vóór de laatste keuze van het avontuur samen een overwicht van de ene houding, dan levert een laatste keuze die daarvan afwijkt een bonus op — groter dan wat een gewone keuze zou opleveren. Volg je je eigen patroon, of is er geen duidelijk overwicht, dan blijft de score ongewijzigd. Geen enkele richting is dus verplicht of zelfs maar wenselijk; de beloning zit in het doorbreken van je eigen patroon, niet in een van de twee houdingen zelf.
+Daarna wacht na willekeurig 2, 3 of 4 levels een van de bestaande tekstavonturen. Gebruik `←` en `→` om een keuze te selecteren en `Spatie` om te bevestigen. Je kunt ook `Shift` vasthouden om de lichtbalk te bewegen. Een duidelijke rand en stip tonen je selectie. Bij meerdere opties begint het fragment zonder selectie: alleen spatie kiest niets. Bij één vervolgknop volstaat spatie om verder te lezen. Tijdens het lezen staat de tijd stil.
 
-De ontmoeting met Noor en de aankomst geven geen keuzebonus; daar bepalen de keuzes jullie route en gesprek.
+Tekstkeuzes leveren geen punten op en krijgen geen verborgen houding toegekend. Bij de nieuwe ontmoeting zit het gevolg in wat je ontdekt, hoe het volgende level speelt en waar jullie de nacht doorbrengen. De drie oudere avonturen blijven voorlopig beschikbaar; zij hebben nog niet dezelfde uitwerking als de deurontmoeting.
 
 ## Op je Chromebook installeren
 
@@ -69,6 +69,8 @@ npm run dev
 - `src/game/config.ts`: alle afstelbare getallen.
 - `src/game/rules.ts`: de spelregels zonder Phaser of weergavecode.
 - `src/game/journey.ts`: de ontmoeting met Noor, routeregels en herinneringen.
+- `src/game/shelter.ts`: deuronderzoek, aanpak, afloop en groepering van blokken.
+- `src/game/adventureSelection.ts`: directe selectie van tekstkeuzes.
 - `src/game/adventures.ts`: de verhaalfragmenten en keuzes van het tekstavontuur.
 - `src/game/types.ts`: de gedeelde begrippen als TypeScript-types.
 - `src/scenes/GameScene.ts`: toetsen, animaties en weergave.
