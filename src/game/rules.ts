@@ -1,8 +1,8 @@
 import { gameConfig } from './config'
 import { pickAdventureStory } from './adventures'
+import { createShelterOutcome, groupShelterBlocks } from './shelter'
 import { createArrivalStory, getLevelRules, meetingStory, recallJourney, rememberArrival } from './journey'
 import type {
-  AdventureAlignment,
   AffinityMatrix,
   AttemptResolution,
   BlockColor,
@@ -55,7 +55,13 @@ export function resolveTimePressure(state: GameState, nowMs: number): TimePressu
             tone: 'late' as const,
           },
         }
-      : state.journey
+      : state.journey.phase === 'opening' && state.journey.shelter
+        ? {
+            ...state.journey,
+            phase: 'shelter-finished' as const,
+            shelter: { ...state.journey.shelter, result: 'late' as const },
+          }
+        : state.journey
   return {
     progress,
     outcome: 'time-up',
@@ -76,7 +82,11 @@ export function createEmptyAffinity(): AffinityMatrix {
   }
 }
 
-export function createPath(level: number, random: RandomSource = Math.random): PathState {
+export function createPath(
+  level: number,
+  random: RandomSource = Math.random,
+  grouping?: 'color' | 'direction',
+): PathState {
   const targetSide = getTargetSide(level)
   const directions: BlockDirection[] = ['up', targetSide]
   const combinations: GameBlock[] = COLORS.flatMap((color) => directions.map((direction) => ({ color, direction })))
@@ -89,7 +99,7 @@ export function createPath(level: number, random: RandomSource = Math.random): P
     ;[pool[index], pool[swapIndex]] = [pool[swapIndex], pool[index]]
   }
 
-  return { targetSide, blocks: pool.slice(0, gameConfig.blocksPerPath), activeIndex: 0 }
+  return { targetSide, blocks: groupShelterBlocks(pool.slice(0, gameConfig.blocksPerPath), grouping), activeIndex: 0 }
 }
 
 function recordShown(affinity: AffinityMatrix, path: PathState): AffinityMatrix {
@@ -111,14 +121,6 @@ function pickAdventureGap(random: RandomSource): number {
   return choices[Math.floor(random() * choices.length)]
 }
 
-function isDefiantChoice(priorAlignments: AdventureAlignment[], finalAlignment: AdventureAlignment): boolean {
-  const boldCount = priorAlignments.filter((alignment) => alignment === 'bold').length
-  const waryCount = priorAlignments.length - boldCount
-  if (boldCount === waryCount) return false
-  const establishedLeaning: AdventureAlignment = boldCount > waryCount ? 'bold' : 'wary'
-  return finalAlignment !== establishedLeaning
-}
-
 export function createGameState(random: RandomSource = Math.random, nowMs = 0): GameState {
   const path = createPath(1, random)
   return {
@@ -129,7 +131,7 @@ export function createGameState(random: RandomSource = Math.random, nowMs = 0): 
     edgeProgress: { left: 0, right: 0 },
     levelRules: getLevelRules(),
     performance: { mistakes: 0, highestCombo: 0, elapsedMs: 0 },
-    journey: { phase: 'unmet', route: null, memory: null },
+    journey: { phase: 'unmet', route: null, memory: null, shelter: null },
     affinity: recordShown(createEmptyAffinity(), path),
     timing: {
       levelStartedAtMs: nowMs,
@@ -147,14 +149,18 @@ export function createGameState(random: RandomSource = Math.random, nowMs = 0): 
 
 export function startNextLevel(state: GameState, random: RandomSource = Math.random, nowMs = 0): GameState {
   const level = state.level + 1
-  const path = createPath(level, random)
+  const levelRules = getLevelRules(state.journey.phase === 'travelling' ? state.journey.route : null)
+  if (state.journey.phase === 'opening' && state.journey.shelter) {
+    levelRules.blockGrouping = gameConfig.shelter.approaches[state.journey.shelter.approach].grouping
+  }
+  const path = createPath(level, random, levelRules.blockGrouping)
   return {
     score: state.score,
     level,
     status: 'playing',
     completedPaths: 0,
     edgeProgress: { left: 0, right: 0 },
-    levelRules: getLevelRules(state.journey.phase === 'travelling' ? state.journey.route : null),
+    levelRules,
     performance: { mistakes: 0, highestCombo: 0, elapsedMs: 0 },
     journey: state.journey,
     affinity: recordShown(state.affinity, path),
@@ -176,23 +182,26 @@ export function isAdventureDue(state: GameState): boolean {
   return (
     (state.level === 1 && state.journey.phase === 'unmet') ||
     state.journey.phase === 'arrived' ||
+    state.journey.phase === 'shelter-finished' ||
     state.adventure.levelsUntilAdventure <= 0
   )
 }
 
 export function enterAdventure(state: GameState, random: RandomSource = Math.random): GameState {
   const story =
-    state.journey.phase === 'arrived' && state.journey.memory
-      ? createArrivalStory(state.journey.memory)
-      : state.level === 1 && state.journey.phase === 'unmet'
-        ? meetingStory
-        : recallJourney(pickAdventureStory(random), state.journey.memory)
+    state.journey.phase === 'shelter-finished' && state.journey.shelter
+      ? createShelterOutcome(state.journey.shelter)
+      : state.journey.phase === 'arrived' && state.journey.memory
+        ? createArrivalStory(state.journey.memory)
+        : state.level === 1 && state.journey.phase === 'unmet'
+          ? meetingStory
+          : recallJourney(pickAdventureStory(random), state.journey.memory, state.journey.shelter)
   return {
     ...state,
     status: 'adventure',
     adventure: {
       levelsUntilAdventure: pickAdventureGap(random),
-      active: { story, fragmentId: story.entryFragmentId, priorAlignments: [] },
+      active: { story, fragmentId: story.entryFragmentId },
       log: state.adventure.log,
     },
   }
@@ -208,24 +217,21 @@ export function chooseAdventureOption(
     throw new Error('Een keuze is alleen toegestaan tijdens een tekstavontuur.')
   }
 
-  const { story, fragmentId, priorAlignments } = state.adventure.active
+  const { story, fragmentId } = state.adventure.active
   const fragment = story.fragments[fragmentId]
   const choice = fragment.choices[choiceIndex]
   if (!choice) {
     throw new Error('Ongeldige keuze-index.')
   }
 
-  const log = [
-    ...state.adventure.log,
-    { adventureId: story.id, fragmentId: fragment.id, choiceId: choice.id, alignment: choice.alignment },
-  ]
+  const log = [...state.adventure.log, { adventureId: story.id, fragmentId: fragment.id, choiceId: choice.id }]
 
   if (choice.next !== 'end') {
     return {
       ...state,
       adventure: {
         ...state.adventure,
-        active: { story, fragmentId: choice.next, priorAlignments: [...priorAlignments, choice.alignment] },
+        active: { story, fragmentId: choice.next },
         log,
       },
     }
@@ -237,7 +243,7 @@ export function chooseAdventureOption(
       {
         ...state,
         adventure: { ...state.adventure, active: null, log },
-        journey: { phase: 'travelling', route: choice.route, memory: null },
+        journey: { phase: 'travelling', route: choice.route, memory: null, shelter: null },
       },
       random,
       nowMs,
@@ -245,20 +251,24 @@ export function chooseAdventureOption(
   }
 
   if (story.kind === 'arrival') {
+    if (!choice.shelterApproach) throw new Error('Een aanpak voor de deur ontbreekt.')
     return startNextLevel(
       {
         ...state,
         adventure: { ...state.adventure, active: null, log },
-        journey: { ...state.journey, phase: 'complete' },
+        journey: { ...state.journey, phase: 'opening', shelter: { approach: choice.shelterApproach, result: null } },
       },
       random,
       nowMs,
     )
   }
 
-  const bonus = isDefiantChoice(priorAlignments, choice.alignment) ? gameConfig.adventure.defianceBonus : 0
   return startNextLevel(
-    { ...state, adventure: { ...state.adventure, active: null, log }, score: state.score + bonus },
+    {
+      ...state,
+      journey: story.kind === 'shelter-result' ? { ...state.journey, phase: 'complete' } : state.journey,
+      adventure: { ...state.adventure, active: null, log },
+    },
     random,
     nowMs,
   )
@@ -348,7 +358,9 @@ export function resolveAttempt(
                 phase: 'arrived',
                 memory: rememberArrival(state.journey.route, performance, state.levelRules, timeReliefMs),
               }
-            : state.journey,
+            : state.journey.phase === 'opening' && state.journey.shelter
+              ? { ...state.journey, phase: 'shelter-finished', shelter: { ...state.journey.shelter, result: 'opened' } }
+              : state.journey,
         score,
         status: 'stage-win',
         completedPaths,
@@ -382,7 +394,7 @@ export function resolveAttempt(
     }
   }
 
-  const path = createPath(state.level, random)
+  const path = createPath(state.level, random, state.levelRules.blockGrouping)
   return {
     outcome: 'path-complete',
     quality,

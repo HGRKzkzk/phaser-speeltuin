@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { gameConfig } from '../game/config'
 import { getJourneyCaption } from '../game/journey'
+import { initialAdventureSelection, stepAdventureSelection } from '../game/adventureSelection'
 import {
   chooseAdventureOption,
   createGameState,
@@ -98,6 +99,7 @@ export class GameScene extends Phaser.Scene {
   private progressBars!: Record<TargetSide, ProgressBarView>
   private affinityLights!: Record<TargetSide, Record<BlockColor, Phaser.GameObjects.Arc>>
 
+  private adventureSelection: number | null = null
   private adventureUI?: Phaser.GameObjects.Container
   private adventureSelector!: Phaser.GameObjects.Container
   private adventureChoiceViews: AdventureChoiceView[] = []
@@ -353,9 +355,11 @@ export class GameScene extends Phaser.Scene {
     const late = this.state.status === 'stage-late'
     const titleText = late
       ? 'OP JOUW TEMPO VERDER'
-      : this.state.journey.phase === 'arrived'
-        ? 'SAMEN AANGEKOMEN'
-        : `LEVEL ${this.state.level} KLAAR`
+      : this.state.journey.phase === 'shelter-finished'
+        ? 'DE DEUR GAAT OPEN'
+        : this.state.journey.phase === 'arrived'
+          ? 'BIJ DE SCHUILPLAATS'
+          : `LEVEL ${this.state.level} KLAAR`
     const title = this.addText(400, 185, titleText, 40, TEXT_COLOR.gold).setOrigin(0.5)
     const score = this.addText(400, 255, `${this.state.score} punten`, 28, TEXT_COLOR.default).setOrigin(0.5)
     const bonus = this.addText(
@@ -366,13 +370,15 @@ export class GameScene extends Phaser.Scene {
       TEXT_COLOR.cyan,
     ).setOrigin(0.5)
     const nextLabel =
-      this.state.journey.phase === 'arrived'
-        ? 'NOOR GAAT NAAST JE ZITTEN'
-        : this.state.level === 1 && this.state.journey.phase === 'unmet'
-          ? 'IEMAND WACHT BIJ DE SPLITSING'
-          : adventureDue
-            ? 'EEN TEKSTAVONTUUR WACHT'
-            : 'VOLGENDE LEVEL'
+      this.state.journey.phase === 'shelter-finished'
+        ? 'EEN PLEK VOOR DE NACHT'
+        : this.state.journey.phase === 'arrived'
+          ? 'ER TIKT IETS ACHTER DE DEUR'
+          : this.state.level === 1 && this.state.journey.phase === 'unmet'
+            ? 'IEMAND WACHT BIJ DE SPLITSING'
+            : adventureDue
+              ? 'EEN TEKSTAVONTUUR WACHT'
+              : 'VOLGENDE LEVEL'
     const next = this.addText(400, 350, nextLabel, 18, TEXT_COLOR.green).setOrigin(0.5)
     this.overlay = this.add.container(0, 0, [shade, title, score, bonus, next]).setDepth(DEPTH.overlay)
 
@@ -411,10 +417,12 @@ export class GameScene extends Phaser.Scene {
     const adventure = this.state.adventure.active
     if (!adventure) return
 
+    // Discard presses made during the previous overlay; choices require fresh input.
+    ;[this.leftKey, this.rightKey, this.spaceKey].forEach((key) => Phaser.Input.Keyboard.JustDown(key))
     const fragment = adventure.story.fragments[adventure.fragmentId]
     const shade = this.add.rectangle(400, 250, 800, 500, PANEL_COLOR.overlayShade, 0.92)
-    const storyText = this.addText(400, 150, fragment.text, 18, TEXT_COLOR.soft)
-      .setOrigin(0.5)
+    const storyText = this.addText(400, 65, fragment.text, 18, TEXT_COLOR.soft)
+      .setOrigin(0.5, 0)
       .setWordWrapWidth(620, true)
       .setAlign('center')
 
@@ -425,13 +433,20 @@ export class GameScene extends Phaser.Scene {
       this.createAdventureChoiceView(this.adventureChoiceXs[index], choice),
     )
 
+    this.adventureSelection = initialAdventureSelection(fragment.choices.length)
     this.adventureSelectorX = CENTER_X
     this.adventureSelectorDirection = 1
     this.adventureSelector = this.createAdventureSelector()
 
-    const hint = this.addText(400, 448, 'Houd SHIFT vast om te bewegen · SPATIE kiest', 15, TEXT_COLOR.muted).setOrigin(
-      0.5,
-    )
+    const hint = this.addText(
+      400,
+      448,
+      fragment.choices.length === 1
+        ? 'SPATIE om verder te gaan'
+        : '← → kies · SPATIE bevestigt · SHIFT beweegt de balk',
+      15,
+      TEXT_COLOR.muted,
+    ).setOrigin(0.5)
 
     this.adventureUI = this.add
       .container(0, 0, [
@@ -443,7 +458,7 @@ export class GameScene extends Phaser.Scene {
       ])
       .setDepth(DEPTH.overlay)
 
-    this.highlightAdventureChoice(this.getPointedAdventureChoiceIndex())
+    this.highlightAdventureChoice(this.adventureSelection)
   }
 
   private createAdventureChoiceView(x: number, choice: AdventureChoice): AdventureChoiceView {
@@ -457,7 +472,7 @@ export class GameScene extends Phaser.Scene {
       .setAlign('center')
       .setWordWrapWidth(160, true)
     const hint = this.add.circle(0, 42, 3, 0xf8fafc, 0)
-    const container = this.add.container(x, 265, [box, label, description, hint])
+    const container = this.add.container(x, 285, [box, label, description, hint])
     return { container, box, hint }
   }
 
@@ -471,7 +486,17 @@ export class GameScene extends Phaser.Scene {
   private updateAdventure(delta: number) {
     if (!this.state.adventure.active) return
 
-    if (this.shiftKey.isDown) {
+    const left = Phaser.Input.Keyboard.JustDown(this.leftKey)
+    const right = Phaser.Input.Keyboard.JustDown(this.rightKey)
+    if (left !== right) {
+      this.adventureSelection = stepAdventureSelection(
+        this.adventureSelection,
+        this.adventureChoiceXs.length,
+        left ? -1 : 1,
+      )
+      this.adventureSelectorX = this.adventureChoiceXs[this.adventureSelection!]
+      this.adventureSelector.setX(this.adventureSelectorX)
+    } else if (this.shiftKey.isDown) {
       const distance = (ADVENTURE_TRACK_SPEED * delta) / 1000
       const min = CENTER_X - ADVENTURE_TRACK_HALF_WIDTH
       const max = CENTER_X + ADVENTURE_TRACK_HALF_WIDTH
@@ -486,12 +511,13 @@ export class GameScene extends Phaser.Scene {
       }
 
       this.adventureSelector.setX(this.adventureSelectorX)
+      this.adventureSelection = this.getPointedAdventureChoiceIndex()
     }
 
-    const pointedIndex = this.getPointedAdventureChoiceIndex()
+    const pointedIndex = this.adventureSelection
     this.highlightAdventureChoice(pointedIndex)
 
-    if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+    if (Phaser.Input.Keyboard.JustDown(this.spaceKey) && pointedIndex !== null) {
       this.commitAdventureChoice(pointedIndex)
     }
   }
@@ -509,28 +535,22 @@ export class GameScene extends Phaser.Scene {
     return closest
   }
 
-  private highlightAdventureChoice(pointedIndex: number) {
+  private highlightAdventureChoice(pointedIndex: number | null) {
     this.adventureChoiceViews.forEach((view, index) => {
       const isPointed = index === pointedIndex
-      view.box.setStrokeStyle(1, isPointed ? PANEL_COLOR.borderHighlight : PANEL_COLOR.border)
+      view.box.setStrokeStyle(isPointed ? 3 : 1, isPointed ? PANEL_COLOR.borderHighlight : PANEL_COLOR.border)
       view.box.setFillStyle(PANEL_COLOR.background, isPointed ? 0.92 : 0.82)
-      view.hint.setAlpha(isPointed ? 0.45 : 0)
+      view.hint.setAlpha(isPointed ? 1 : 0)
     })
   }
 
   private commitAdventureChoice(choiceIndex: number) {
-    const scoreBefore = this.state.score
     this.state = chooseAdventureOption(this.state, choiceIndex, Math.random, this.time.now)
     this.destroyAdventureUI()
 
     if (this.state.status === 'adventure') {
       this.showAdventure()
       return
-    }
-
-    const bonus = this.state.score - scoreBefore
-    if (bonus > 0) {
-      this.showFeedback(`ONVERWACHT  +${bonus}`, TEXT_COLOR.gold)
     }
 
     this.presentLevel()
@@ -645,7 +665,11 @@ export class GameScene extends Phaser.Scene {
   private updateJourneyDisplay() {
     this.journeyText.setText(getJourneyCaption(this.state.journey))
     const destination =
-      this.state.journey.phase === 'travelling' || this.state.journey.phase === 'arrived' ? 'SCHUILPLAATS' : 'STAGE WIN'
+      this.state.journey.phase === 'opening' || this.state.journey.phase === 'shelter-finished'
+        ? 'DEUR OPENEN'
+        : this.state.journey.phase === 'travelling' || this.state.journey.phase === 'arrived'
+          ? 'SCHUILPLAATS'
+          : 'STAGE WIN'
     const progress = Math.max(0, this.state.edgeProgress[this.state.path.targetSide])
     this.goalText.setText(`${destination} · ${progress}/${this.state.levelRules.targetHits}`)
   }

@@ -28,11 +28,11 @@ export type PathState = {
   activeIndex: number
 }
 
-export type AdventureAlignment = 'bold' | 'wary'
-
 export type JourneyRoute = 'open' | 'sheltered'
 export type ArrivalTone = 'persistent' | 'fluent' | 'steady' | 'late'
-export type LevelRules = { targetHits: number; timeLimitMs: number }
+export type ShelterApproach = 'lift' | 'hinges'
+export type ShelterMemory = { approach: ShelterApproach; result: 'opened' | 'late' | null }
+export type LevelRules = { targetHits: number; timeLimitMs: number; blockGrouping?: 'color' | 'direction' }
 export type LevelPerformance = { mistakes: number; highestCombo: number; elapsedMs: number }
 export type JourneyMemory = LevelPerformance & {
   route: JourneyRoute
@@ -40,18 +40,19 @@ export type JourneyMemory = LevelPerformance & {
   tone: ArrivalTone
 }
 export type JourneyState = {
-  phase: 'unmet' | 'travelling' | 'arrived' | 'complete'
+  phase: 'unmet' | 'travelling' | 'arrived' | 'opening' | 'shelter-finished' | 'complete'
   route: JourneyRoute | null
   memory: JourneyMemory | null
+  shelter: ShelterMemory | null
 }
 
 export type AdventureChoice = {
   id: string
   label: string
   description: string
-  alignment: AdventureAlignment
   next: string
   route?: JourneyRoute
+  shelterApproach?: ShelterApproach
 }
 
 export type AdventureFragment = {
@@ -62,7 +63,7 @@ export type AdventureFragment = {
 
 export type AdventureStory = {
   id: string
-  kind?: 'meeting' | 'arrival'
+  kind?: 'meeting' | 'arrival' | 'shelter-result'
   entryFragmentId: string
   fragments: Record<string, AdventureFragment>
 }
@@ -70,14 +71,12 @@ export type AdventureStory = {
 export type ActiveAdventure = {
   story: AdventureStory
   fragmentId: string
-  priorAlignments: AdventureAlignment[]
 }
 
 export type AdventureChoiceRecord = {
   adventureId: string
   fragmentId: string
   choiceId: string
-  alignment: AdventureAlignment
 }
 
 export type TimingState = {

@@ -12,10 +12,9 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - **Voortgangsbalk:** de gloeiende balk aan iedere buitenzijde van het speelveld.
 - **Affiniteit:** de blijvende registratie van aangeboden en correct gespeelde blokken per combinatie van zijde en kleur.
 - **Tekstavontuur:** een onderbreking tussen twee levels die uit een reeks fragmenten bestaat en pas eindigt wanneer een keuze daar expliciet toe leidt.
-- **Fragment:** één stap binnen een tekstavontuur: een tekst met twee of drie keuzes, waarvan iedere keuze naar een volgend fragment leidt of het avontuur beëindigt.
-- **Keuzewijzer:** de kleinere, lager geplaatste balk die tijdens een tekstavontuur heen en weer beweegt zolang Shift wordt vastgehouden, en aangeeft welke keuze spatie op dit moment zou bevestigen via een kleine, terughoudende aanwijzing.
-- **Houding:** de gedurfde of behoedzame waarde van een keuze binnen een tekstavontuur; geen van beide is op zichzelf beter dan de andere.
-- **Overwicht:** de houding die onder de keuzes vóór de laatste keuze van een tekstavontuur vaker voorkomt dan de andere; er is geen overwicht als de aantallen gelijk zijn.
+- **Fragment:** één stap binnen een tekstavontuur: een tekst met één vervolgknop of twee of drie keuzes, waarvan iedere keuze naar een volgend fragment leidt of het avontuur beëindigt.
+- **Keuzewijzer:** de lichtbalk onder de tekstkeuzes; volgt directe selectie met links/rechts of beweegt zolang Shift wordt vastgehouden.
+- **Aanpak:** de concrete werkwijze bij de deur, die de volgorde van blokken in precies één volgend level verandert.
 
 ## Kernlus
 
@@ -43,38 +42,32 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - Gewone levels vragen 21 netto treffers en geven 24 seconden basistijd. Een routekeuze kan voor één level een ander doel en een andere basistijd vastleggen.
 - De witte balk bereikt zichtbaar het midden bij het doel van dat level; een fout blijft één voortgangsstap kosten en de buitenrand blijft de verliesgrens.
 
-## De belofte aan Noor
+## De belofte aan Noor en de klemmende deur
 
 - Na het eerste level (gewonnen of te laat) volgt altijd de ontmoeting met Noor, vóór een willekeurig avontuur.
-- Je belooft samen vóór het donker de schuilplaats te bereiken. Beide antwoorden op de ontmoeting leiden naar dezelfde routekeuze.
+- Jullie spreken af samen vóór het donker de schuilplaats te bereiken. De introductie heeft één vervolgknop; daarna kies je een route.
 - Over de open vlakte vraagt het volgende level 14 netto treffers met 16 seconden basistijd; langs de beschutting vraagt het 28 netto treffers met 32 seconden basistijd.
 - Beide routes hebben dezelfde verhouding tussen basistijd en benodigde treffers. De langere route biedt meer gelegenheid voor combo-opbouw, maar vraagt ook langer concentratie.
-- De keuzes benoemen vooraf kortere weg/sneller donker en langere weg/meer tijd. Tijdens het level zijn route, reisgenoot en doel zichtbaar.
-- De route-instellingen staan bij de start van het level vast en bepalen zowel winst, tijdverlies, tijdbonus als de getekende balkposities.
-- Per level worden fouten, hoogste combo (aantal treffers) en verstreken speeltijd geregistreerd. Bij het einde van de route wordt ook de resterende tijd bewaard in een herinnering.
-- Na het routelevel volgt altijd een aankomstgesprek. Is de rode lijn in het midden, dan komen jullie na het donker aan met een eigen reactie van Noor; ook zonder correcte treffers gaat het verhaal verder. Veel fouten of weinig resterende tijd geven een moeizame aankomst; foutloos spelen met een sterke combo geeft een vloeiende aankomst; anders komen jullie gestaag aan. De grenzen staan in de centrale configuratie.
-- Alle aankomsten bieden een gesprek en een rustmoment. Ze zijn geen morele beoordeling en leveren geen extra scorebonus op.
-- De ontmoeting, routekeuze en aankomst kennen geen afwijkingsbonus voor het kiezen van een andere houding.
-- Tijdens gesprekken loopt geen actieve levelklok. Pas na de routekeuze of het laatste aankomstantwoord begint de klok van het volgende level.
-- Na de aankomst gelden weer de gewone levelregels. Noor en de herinnering blijven zichtbaar en klinken door in het begin van latere avonturen.
-- Bij game over stopt de poging zonder aankomst. Een nieuw spel wist ook Noor, de route en de herinnering.
+- Per level worden fouten, hoogste combo en verstreken speeltijd geregistreerd. Bij het einde van de route wordt ook de resterende tijd bewaard. Dit bepaalt een vloeiende, gestage, moeizame of late aankomst; de grenzen staan in config.
+- Ook na tijdsverloop kom je bij de schuilplaats. De deur klemt. Luisteren onthult de lepel die tikt, onderzoeken onthult de scheve deur. Je kunt beide doen, zonder tijdverlies, voordat je een aanpak kiest.
+- **Optillen:** in elk pad van het volgende level worden dezelfde kleuren bij elkaar gezet. **Scharnieren losmaken:** in elk pad worden dezelfde richtingen bij elkaar gezet. De eerste willekeurig getrokken kleur of richting staat vooraan. Beide aanpakken houden dezelfde gebalanceerde blokkenzak, normale score, doelafstand en basistijd.
+- Alleen de volgorde verandert. Rood en blauw houden beide richtingen; er wordt geen vaste richting, houding of waarde aan een kleur gekoppeld.
+- De gekozen groepering staat vast in de levelregels en geldt voor alle paden in dat ene level. De HUD benoemt de aanpak en het doel: de deur openen.
+- Winst opent de deur, met een afloop passend bij de aanpak. Bij tijdsverloop blijft de deur dicht en slapen jullie op een droge bank onder het afdak. Het verhaal gaat in beide gevallen verder; de buitenrand blijft de bestaande game-overgrens.
+- Na de afloop en de volgende ochtend begint een gewoon level. Routeherinnering en deurafloop blijven bewaard en klinken door in latere avonturen; een nieuwe run wist ze.
+- Tijdens onderzoek en afloop loopt geen actieve levelklok. De klok start pas wanneer een tekstkeuze daadwerkelijk het volgende lijnlevel start.
 
-## Tekstavontuur
+## Tekstavontuur en ontwerptoets
 
-- Bij het begin van een spel en na ieder tekstavontuur wordt opnieuw willekeurig getrokken hoeveel levels er nog moeten volgen voordat het volgende tekstavontuur begint: 2, 3 of 4.
-- De vaste ontmoeting en aankomst van Noor gaan voor op deze teller. Na de aankomst loopt de gewone afwisseling verder.
-- Ieder afgerond level (gewonnen of te laat) telt dat aantal precies één keer met één af.
-- Staat dat aantal na een afgerond level op nul, dan begint in plaats van het volgende level eerst een tekstavontuur.
-- Een tekstavontuur begint bij het eerste fragment van een willekeurig gekozen avontuur en toont daarna telkens één fragment met twee of drie keuzes.
-- De keuzewijzer beweegt zolang Shift wordt vastgehouden en staat stil zodra Shift wordt losgelaten.
-- Een keuze wordt bevestigd door de spatiebalk in te drukken; de keuze waar de keuzewijzer op dat moment op wijst, is de gemaakte keuze.
-- Welke keuze de keuzewijzer op dat moment aanwijst, wordt slechts als kleine, terughoudende aanwijzing getoond; nooit als een expliciete tekstuele instructie op de keuze zelf.
-- Een gemaakte keuze leidt naar het volgende fragment van hetzelfde avontuur, of beëindigt het avontuur; nooit allebei tegelijk.
-- Elke keuze in een tekstavontuur draagt een houding: gedurfd of behoedzaam.
-- Is er onder de keuzes vóór de laatste keuze van het avontuur een overwicht, en wijkt de houding van de laatste keuze daarvan af, dan levert dat een bonus van `adventure.defianceBonus` punten op.
-- Volgt de laatste keuze het overwicht, of is er geen overwicht, dan levert de laatste keuze geen bonus op.
-- In de gewone avonturen is deze bonus de enige directe score-invloed; het levelnummer wisselt niet tijdens het doorlopen ervan. De Noor-verhaallus gebruikt gevolgen voor het lijnlevel en gesprek, zonder deze bonus.
-- Zodra het avontuur eindigt, wordt de eventuele bonus toegekend en begint direct het volgende level, met dezelfde levelwissel van zijde als daarbuiten.
+- Nieuwe ontmoetingen bevatten iets concreets om nieuwsgierig naar te zijn, een handeling waarop de wereld reageert en een herkenbaar gevolg. De deurontmoeting werkt dit als eerste volledig uit; oudere verhalen worden niet automatisch aan deze standaard gelijkgesteld.
+- Een handeling krijgt een leesbare reactie voordat je terugkeert naar het lijnspel. Samenkomende vertakkingen mogen, maar hun ontdekkingen moeten eerst zichtbaar zijn.
+- Gebruik één vervolgknop als er niets wezenlijks te kiezen is. Noor heeft eigen waarnemingen, vergissingen en humor; gesprekken leggen niet steeds de waarde van de speler uit.
+- Bij het begin van een spel en na ieder tekstavontuur wordt de afstand tot een willekeurig avontuur getrokken: 2, 3 of 4 levels.
+- De vaste ontmoeting, het deuronderzoek en de deurafloop gaan voor op deze teller. Ieder afgerond level telt hem precies één keer af. Na de deurafloop gaat de gewone afwisseling verder.
+- Bij meerdere opties begint een fragment zonder selectie. Links/rechts selecteert een optie; Shift beweegt desgewenst de lichtbalk. Bij één vervolgknop is die al geselecteerd en volstaat spatie. Spatie bevestigt uitsluitend een selectie.
+- Directe selectie heeft voorrang op Shift als beide tegelijk worden gebruikt. Aan de uiteinden blijft directe selectie staan. De actieve optie heeft een duidelijke rand en stip.
+- Iedere bevestiging leidt naar één volgend fragment of start één volgend level. Een keuze wordt met verhaal-, fragment- en keuze-id gelogd.
+- Tekstkeuzes kennen geen houdingsclassificatie of afwijkingsbonus. Ze veranderen de score niet. Beloningen voor treffers, combo's en tijd blijven bij het lijnspel.
 
 ## Kleuren en richtingen
 
@@ -133,14 +126,11 @@ Deze regels mogen niet bij toeval veranderen tijdens visueel of technisch onderh
 - Herinneringen veranderen nooit de gedeelde bronverhalen en blijven bewaard als de levelstatistieken bij de volgende start worden gewist.
 - Een volgend level bewaart de score; een nieuw spel wist de score.
 - Affiniteit en aanbod worden door de regelkern geregistreerd, niet door de presentatie.
-- Tijdens een tekstavontuur wijst de keuzewijzer altijd op precies één keuze.
+- Tijdens een tekstavontuur is er geen selectie of precies één selectie; zonder selectie doet spatie niets.
 - Het aantal levels tot het volgende tekstavontuur wordt nooit tijdens een lopend level opnieuw getrokken, alleen bij het begin van een spel of na een tekstavontuur.
 - De beweging van de keuzewijzer zelf is presentatie; alleen de uiteindelijk gemaakte keuze is spelstatus.
 - Het huidige fragment van een tekstavontuur is spelstatus; welk fragment na een keuze volgt, ligt vast in het avontuur zelf, niet in de presentatie.
-- De aanwijzing van de keuzewijzer blijft klein en mag de aangewezen keuze nooit met tekst benoemen.
-- De afwijkingsbonus hangt alleen af van de houdingen binnen hetzelfde avontuur, nooit van eerdere avonturen of van de speler zijn algehele voortgang.
-- Geen van beide houdingen wordt door de regels als wenselijk, verplicht of fout aangemerkt; de bonus beloont het afwijken van het eigen patroon, niet een van de twee houdingen zelf.
 
 ## Afstelbare waarden
 
-Getallen zoals padlengte, punten, het aantal balkstappen tot winst of verlies, route-instellingen, aankomstgrenzen, de mogelijke levelafstand tot een tekstavontuur en de afwijkingsbonus staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.
+Getallen zoals padlengte, punten, het aantal balkstappen tot winst of verlies, route-instellingen, aankomstgrenzen, de mogelijke levelafstand tot een tekstavontuur en de aanpakinstellingen staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.
