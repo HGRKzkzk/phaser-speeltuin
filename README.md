@@ -27,7 +27,9 @@ Na het eerste level ontmoet je Noor, ook als de tijd op is. Jullie willen samen 
 
 Die aanpak verandert precies één volgend lijnlevel. **Deur optillen** groepeert de kleuren per pad, zodat je minder vaak van kleur wisselt. **Scharnieren losmaken** groepeert de richtingen, zodat je minder vaak van pijl wisselt. Het aanbod van kleur-richtingcombinaties blijft gelijk. Je opent de deur, of vindt bij tijdsverloop een droge bank onder het afdak. Beide aflopen gaan via een rustmoment naar het volgende level met gewone blokken. Noor onthoudt de afloop in latere avonturen; een nieuwe run wist die herinnering.
 
-Daarna wacht na willekeurig 2, 3 of 4 levels een van de bestaande tekstavonturen. Gebruik `←` en `→` om een keuze te selecteren en `Spatie` om te bevestigen. Je kunt ook `Shift` vasthouden om de lichtbalk te bewegen. Een duidelijke rand en stip tonen je selectie. Bij meerdere opties begint het fragment zonder selectie: alleen spatie kiest niets. Bij één vervolgknop volstaat spatie om verder te lezen. Tijdens het lezen staat de tijd stil.
+Daarna wacht na willekeurig 2, 3 of 4 levels een van de bestaande tekstavonturen. Gebruik `←` en `→` om te selecteren en `Enter` om te bevestigen, of klik/tik op de keuze. Een duidelijke rand toont de selectie. Bij meerdere opties begint het fragment zonder selectie; bij één vervolgknop volstaat Enter. Spatie blijft als alternatief voor Enter werken. Tijdens het lezen staat de tijd stil.
+
+Bij de **aanpak van de deur** kun je `←` of `→` ongeveer een halve seconde vasthouden, of de keuze met muis/vinger ingedrukt houden. Een lichtbalkje vult zich en een korte reactie van Noor verschijnt. Loslaten vóór voltooiing stopt de handeling. Buiten de knop bewegen of het venster verlaten breekt de poging ook af. Laat na een bevestiging eerst los voordat je verdergaat. Kort selecteren en Enter blijft mogelijk. De bewegende Shift-wijzer is vervallen; het vasthouden wordt alleen bij deze twee deurhandelingen uitgeprobeerd.
 
 Tekstkeuzes leveren geen punten op en krijgen geen verborgen houding toegekend. Bij de nieuwe ontmoeting zit het gevolg in wat je ontdekt, hoe het volgende level speelt en waar jullie de nacht doorbrengen. De drie oudere avonturen blijven voorlopig beschikbaar; zij hebben nog niet dezelfde uitwerking als de deurontmoeting.
 
@@ -71,6 +73,7 @@ npm run dev
 - `src/game/journey.ts`: de ontmoeting met Noor, routeregels en herinneringen.
 - `src/game/shelter.ts`: deuronderzoek, aanpak, afloop en groepering van blokken.
 - `src/game/adventureSelection.ts`: directe selectie van tekstkeuzes.
+- `src/game/choiceHold.ts`: opbouw, afbreken en loslaten van een vasthoudactie.
 - `src/game/adventures.ts`: de verhaalfragmenten en keuzes van het tekstavontuur.
 - `src/game/types.ts`: de gedeelde begrippen als TypeScript-types.
 - `src/scenes/GameScene.ts`: toetsen, animaties en weergave.
