@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { gameConfig } from '../game/config'
 import { getJourneyCaption } from '../game/journey'
 import { initialAdventureSelection, stepAdventureSelection } from '../game/adventureSelection'
+import { advanceChoiceHold, createChoiceHold } from '../game/choiceHold'
 import {
   chooseAdventureOption,
   createGameState,
@@ -13,6 +14,7 @@ import {
 } from '../game/rules'
 import type {
   AdventureChoice,
+  AdventureFragment,
   AttemptResolution,
   BlockColor,
   BlockDirection,
@@ -54,6 +56,7 @@ type AdventureChoiceView = {
   container: Phaser.GameObjects.Container
   box: Phaser.GameObjects.Rectangle
   hint: Phaser.GameObjects.Arc
+  holdFill: Phaser.GameObjects.Rectangle
 }
 
 type ProgressBarView = {
@@ -66,9 +69,6 @@ type ProgressBarView = {
 const COLOR_KEYS: Record<BlockColor, string> = { red: 'A', blue: 'D' }
 const BAR_START_X: Record<TargetSide, number> = { left: 92, right: 708 }
 const CENTER_X = 400
-const ADVENTURE_TRACK_Y = 380
-const ADVENTURE_TRACK_HALF_WIDTH = 220
-const ADVENTURE_TRACK_SPEED = 260
 
 export class GameScene extends Phaser.Scene {
   private state: GameState = createGameState()
@@ -83,7 +83,7 @@ export class GameScene extends Phaser.Scene {
   private leftKey!: Phaser.Input.Keyboard.Key
   private rightKey!: Phaser.Input.Keyboard.Key
   private spaceKey!: Phaser.Input.Keyboard.Key
-  private shiftKey!: Phaser.Input.Keyboard.Key
+  private enterKey!: Phaser.Input.Keyboard.Key
 
   private scoreText!: Phaser.GameObjects.Text
   private levelText!: Phaser.GameObjects.Text
@@ -101,11 +101,10 @@ export class GameScene extends Phaser.Scene {
 
   private adventureSelection: number | null = null
   private adventureUI?: Phaser.GameObjects.Container
-  private adventureSelector!: Phaser.GameObjects.Container
   private adventureChoiceViews: AdventureChoiceView[] = []
-  private adventureChoiceXs: number[] = []
-  private adventureSelectorX = CENTER_X
-  private adventureSelectorDirection = 1
+  private adventurePreview?: Phaser.GameObjects.Text
+  private adventureHold = createChoiceHold(false)
+  private adventurePointer: { pointer: Phaser.Input.Pointer; choice: number } | null = null
 
   constructor() {
     super('game')
@@ -150,7 +149,19 @@ export class GameScene extends Phaser.Scene {
     this.leftKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT)
     this.rightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT)
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
-    this.shiftKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT)
+    this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
+
+    this.input.addPointer(1)
+    this.game.events.on(Phaser.Core.Events.BLUR, this.cancelAdventureGesture)
+    this.game.events.on(Phaser.Core.Events.HIDDEN, this.cancelAdventureGesture)
+    this.input.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.cancelAdventureGesture)
+    this.game.canvas.addEventListener('touchcancel', this.cancelAdventureGesture, true)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.events.off(Phaser.Core.Events.BLUR, this.cancelAdventureGesture)
+      this.game.events.off(Phaser.Core.Events.HIDDEN, this.cancelAdventureGesture)
+      this.input.off(Phaser.Input.Events.POINTER_UP_OUTSIDE, this.cancelAdventureGesture)
+      this.game.canvas.removeEventListener('touchcancel', this.cancelAdventureGesture, true)
+    })
 
     this.events.on('block-missed', this.onBlockMissed, this)
     this.events.on('block-hit', this.onBlockHit, this)
@@ -170,6 +181,11 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.state.status === 'playing' && this.updateTimePressure()) return
+    if (this.adventureHold.requiresRelease) {
+      this.clearAdventurePresses()
+      this.adventureHold = createChoiceHold(this.adventureControlsDown())
+      return
+    }
 
     const heldColor = this.getHeldColor()
     this.updateColorWash(heldColor)
@@ -204,6 +220,7 @@ export class GameScene extends Phaser.Scene {
     this.cancelPendingTimers()
     this.overlay?.destroy(true)
     this.destroyAdventureUI()
+    this.adventureHold = createChoiceHold(false)
     this.state = createGameState(Math.random, this.time.now)
     this.inputIsLocked = false
     this.scoreText.setText('PUNTEN  0')
@@ -413,154 +430,223 @@ export class GameScene extends Phaser.Scene {
     })
   }
 
-  private showAdventure() {
-    const adventure = this.state.adventure.active
-    if (!adventure) return
+  private adventureFragment(): AdventureFragment | null {
+    const active = this.state.adventure.active
+    return active ? active.story.fragments[active.fragmentId] : null
+  }
 
-    // Discard presses made during the previous overlay; choices require fresh input.
-    ;[this.leftKey, this.rightKey, this.spaceKey].forEach((key) => Phaser.Input.Keyboard.JustDown(key))
-    const fragment = adventure.story.fragments[adventure.fragmentId]
+  private clearAdventurePresses() {
+    ;[this.leftKey, this.rightKey, this.enterKey, this.spaceKey].forEach((key) => Phaser.Input.Keyboard.JustDown(key))
+  }
+
+  private adventureControlsDown(): boolean {
+    return (
+      this.leftKey.isDown ||
+      this.rightKey.isDown ||
+      this.enterKey.isDown ||
+      this.spaceKey.isDown ||
+      this.input.manager.pointers.some((pointer) => pointer.isDown)
+    )
+  }
+
+  private cancelAdventureGesture = () => {
+    if (this.state.status !== 'adventure') return
+    this.adventurePointer = null
+    this.adventureHold = createChoiceHold()
+    this.renderAdventureHold(0)
+  }
+
+  private showAdventure() {
+    const fragment = this.adventureFragment()
+    if (!fragment) return
+
+    this.clearAdventurePresses()
+    this.adventureHold = createChoiceHold()
     const shade = this.add.rectangle(400, 250, 800, 500, PANEL_COLOR.overlayShade, 0.92)
     const storyText = this.addText(400, 65, fragment.text, 18, TEXT_COLOR.soft)
       .setOrigin(0.5, 0)
       .setWordWrapWidth(620, true)
       .setAlign('center')
 
-    const spacing = 220
+    const spacing = 234
     const startX = CENTER_X - ((fragment.choices.length - 1) * spacing) / 2
-    this.adventureChoiceXs = fragment.choices.map((_, index) => startX + index * spacing)
     this.adventureChoiceViews = fragment.choices.map((choice, index) =>
-      this.createAdventureChoiceView(this.adventureChoiceXs[index], choice),
+      this.createAdventureChoiceView(startX + index * spacing, choice, index, fragment.interaction === 'hold'),
     )
-
     this.adventureSelection = initialAdventureSelection(fragment.choices.length)
-    this.adventureSelectorX = CENTER_X
-    this.adventureSelectorDirection = 1
-    this.adventureSelector = this.createAdventureSelector()
-
-    const hint = this.addText(
-      400,
-      448,
-      fragment.choices.length === 1
-        ? 'SPATIE om verder te gaan'
-        : '← → kies · SPATIE bevestigt · SHIFT beweegt de balk',
-      15,
-      TEXT_COLOR.muted,
-    ).setOrigin(0.5)
-
+    this.adventurePreview = this.addText(400, 402, '', 15, TEXT_COLOR.soft)
+      .setOrigin(0.5)
+      .setAlign('center')
+      .setWordWrapWidth(660, true)
+    const instruction =
+      fragment.interaction === 'hold'
+        ? 'Houd ← of → vast, of houd de keuze ingedrukt\nLoslaten stopt · kort selecteren en ENTER kan ook'
+        : fragment.choices.length === 1
+          ? 'ENTER om verder te gaan · of klik/tik'
+          : '← → kies · ENTER bevestigt · of klik/tik'
+    const hint = this.addText(400, 452, instruction, 14, TEXT_COLOR.muted).setOrigin(0.5).setAlign('center')
     this.adventureUI = this.add
       .container(0, 0, [
         shade,
         storyText,
         ...this.adventureChoiceViews.map((view) => view.container),
-        this.adventureSelector,
+        this.adventurePreview,
         hint,
       ])
       .setDepth(DEPTH.overlay)
-
-    this.highlightAdventureChoice(this.adventureSelection)
+    this.highlightAdventureChoice()
   }
 
-  private createAdventureChoiceView(x: number, choice: AdventureChoice): AdventureChoiceView {
-    const box = this.add.rectangle(0, 0, 190, 110, PANEL_COLOR.background, 0.82).setStrokeStyle(1, PANEL_COLOR.border)
-    const label = this.addText(0, -32, choice.label, 16, TEXT_COLOR.default)
-      .setOrigin(0.5)
+  private createAdventureChoiceView(
+    x: number,
+    choice: AdventureChoice,
+    index: number,
+    hold: boolean,
+  ): AdventureChoiceView {
+    const box = this.add
+      .rectangle(0, 0, 210, 146, PANEL_COLOR.background, 0.82)
+      .setStrokeStyle(1, PANEL_COLOR.border)
+      .setInteractive({ useHandCursor: true })
+    const label = this.addText(0, -55, choice.label, 16, TEXT_COLOR.default)
+      .setOrigin(0.5, 0)
       .setAlign('center')
-      .setWordWrapWidth(170, true)
-    const description = this.addText(0, 2, choice.description, 13, TEXT_COLOR.muted)
-      .setOrigin(0.5)
+      .setWordWrapWidth(190, true)
+    const description = this.addText(0, -9, choice.description, 13, TEXT_COLOR.muted)
+      .setOrigin(0.5, 0)
       .setAlign('center')
-      .setWordWrapWidth(160, true)
-    const hint = this.add.circle(0, 42, 3, 0xf8fafc, 0)
-    const container = this.add.container(x, 285, [box, label, description, hint])
-    return { container, box, hint }
-  }
-
-  private createAdventureSelector() {
-    const glow = this.add.rectangle(0, 0, 14, 74, BAR_COLOR.neutralGlow, 0.14)
-    const halo = this.add.rectangle(0, 0, 9, 70, BAR_COLOR.neutralHalo, 0.3)
-    const core = this.add.rectangle(0, 0, 4, 66, BAR_COLOR.neutralCore, 0.96)
-    return this.add.container(CENTER_X, ADVENTURE_TRACK_Y, [glow, halo, core]).setDepth(DEPTH.overlayForeground)
+      .setWordWrapWidth(190, true)
+    const hint = this.add.circle(0, 63, 3, 0xf8fafc, 0).setVisible(!hold)
+    const track = this.add.rectangle(0, 63, 174, 4, PANEL_COLOR.border).setVisible(hold)
+    const holdFill = this.add.rectangle(-87, 63, 174, 4, BAR_COLOR.neutralCore).setOrigin(0, 0.5).setScale(0, 1)
+    box.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (this.state.status !== 'adventure' || this.adventureHold.requiresRelease) return
+      if (
+        (!pointer.wasTouch && pointer.button !== 0) ||
+        this.leftKey.isDown ||
+        this.rightKey.isDown ||
+        this.input.manager.pointers.filter((item) => item.isDown).length !== 1
+      ) {
+        this.cancelAdventureGesture()
+        return
+      }
+      this.adventureSelection = index
+      this.adventurePointer = { pointer, choice: index }
+      this.adventureHold = createChoiceHold(false)
+      this.highlightAdventureChoice()
+    })
+    box.on('pointerout', (pointer: Phaser.Input.Pointer) => {
+      if (this.adventurePointer?.pointer === pointer) this.cancelAdventureGesture()
+    })
+    box.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+      if (this.adventurePointer?.pointer !== pointer || this.adventurePointer.choice !== index) return
+      this.adventurePointer = null
+      if (hold) {
+        this.adventureHold = createChoiceHold(false)
+        this.renderAdventureHold(0)
+      } else {
+        this.commitAdventureChoice(index)
+      }
+    })
+    const container = this.add.container(x, 295, [box, label, description, hint, track, holdFill])
+    return { container, box, hint, holdFill }
   }
 
   private updateAdventure(delta: number) {
-    if (!this.state.adventure.active) return
-
+    const fragment = this.adventureFragment()
+    if (!fragment) return
+    const anyDown = this.adventureControlsDown()
+    if (this.adventureHold.requiresRelease) {
+      this.clearAdventurePresses()
+      this.adventureHold = createChoiceHold(anyDown)
+      return
+    }
     const left = Phaser.Input.Keyboard.JustDown(this.leftKey)
     const right = Phaser.Input.Keyboard.JustDown(this.rightKey)
+    const enter = Phaser.Input.Keyboard.JustDown(this.enterKey)
+    const space = Phaser.Input.Keyboard.JustDown(this.spaceKey)
+    const pointers = this.input.manager.pointers.filter((pointer) => pointer.isDown)
+    if (
+      (this.leftKey.isDown && this.rightKey.isDown) ||
+      pointers.length > 1 ||
+      (pointers.length > 0 &&
+        (this.leftKey.isDown || this.rightKey.isDown || this.enterKey.isDown || this.spaceKey.isDown))
+    ) {
+      this.cancelAdventureGesture()
+      return
+    }
     if (left !== right) {
-      this.adventureSelection = stepAdventureSelection(
-        this.adventureSelection,
-        this.adventureChoiceXs.length,
-        left ? -1 : 1,
-      )
-      this.adventureSelectorX = this.adventureChoiceXs[this.adventureSelection!]
-      this.adventureSelector.setX(this.adventureSelectorX)
-    } else if (this.shiftKey.isDown) {
-      const distance = (ADVENTURE_TRACK_SPEED * delta) / 1000
-      const min = CENTER_X - ADVENTURE_TRACK_HALF_WIDTH
-      const max = CENTER_X + ADVENTURE_TRACK_HALF_WIDTH
-      this.adventureSelectorX += this.adventureSelectorDirection * distance
-
-      if (this.adventureSelectorX >= max) {
-        this.adventureSelectorX = max
-        this.adventureSelectorDirection = -1
-      } else if (this.adventureSelectorX <= min) {
-        this.adventureSelectorX = min
-        this.adventureSelectorDirection = 1
+      // A release/repress between frames starts a fresh gesture too.
+      this.adventureHold = createChoiceHold(false)
+      this.adventureSelection = stepAdventureSelection(this.adventureSelection, fragment.choices.length, left ? -1 : 1)
+    }
+    this.highlightAdventureChoice()
+    // Direct confirmation remains available, so the hold never becomes a dexterity gate.
+    if ((enter || space) && this.adventureSelection !== null) {
+      this.commitAdventureChoice(this.adventureSelection)
+      return
+    }
+    let choice: number | null = null
+    let source: 'keyboard' | 'pointer' | null = null
+    if (fragment.interaction === 'hold') {
+      if (this.adventurePointer && this.adventurePointer.pointer.isDown) {
+        const { pointer, choice: index } = this.adventurePointer
+        if (!this.adventureChoiceViews[index].box.getBounds().contains(pointer.x, pointer.y)) {
+          this.cancelAdventureGesture()
+          return
+        }
+        choice = index
+        source = 'pointer'
+      } else if (this.leftKey.isDown !== this.rightKey.isDown) {
+        choice = this.leftKey.isDown ? 0 : fragment.choices.length - 1
+        this.adventureSelection = choice
+        source = 'keyboard'
       }
-
-      this.adventureSelector.setX(this.adventureSelectorX)
-      this.adventureSelection = this.getPointedAdventureChoiceIndex()
     }
-
-    const pointedIndex = this.adventureSelection
-    this.highlightAdventureChoice(pointedIndex)
-
-    if (Phaser.Input.Keyboard.JustDown(this.spaceKey) && pointedIndex !== null) {
-      this.commitAdventureChoice(pointedIndex)
-    }
+    const resolution = advanceChoiceHold(
+      this.adventureHold,
+      { choice, source, anyDown, deltaMs: delta },
+      gameConfig.adventure.choiceHoldMs,
+    )
+    this.adventureHold = resolution.state
+    this.renderAdventureHold(resolution.progress)
+    if (resolution.committed !== null) this.commitAdventureChoice(resolution.committed)
   }
 
-  private getPointedAdventureChoiceIndex(): number {
-    let closest = 0
-    let closestDistance = Infinity
-    this.adventureChoiceXs.forEach((x, index) => {
-      const distance = Math.abs(x - this.adventureSelectorX)
-      if (distance < closestDistance) {
-        closestDistance = distance
-        closest = index
-      }
-    })
-    return closest
-  }
-
-  private highlightAdventureChoice(pointedIndex: number | null) {
+  private highlightAdventureChoice() {
     this.adventureChoiceViews.forEach((view, index) => {
-      const isPointed = index === pointedIndex
+      const isPointed = index === this.adventureSelection
       view.box.setStrokeStyle(isPointed ? 3 : 1, isPointed ? PANEL_COLOR.borderHighlight : PANEL_COLOR.border)
       view.box.setFillStyle(PANEL_COLOR.background, isPointed ? 0.92 : 0.82)
       view.hint.setAlpha(isPointed ? 1 : 0)
     })
   }
 
+  private renderAdventureHold(progress: number) {
+    this.adventureChoiceViews.forEach((view, index) => {
+      view.holdFill.setScale(index === this.adventureHold.choice ? progress : 0, 1)
+    })
+    const choice = this.adventureHold.choice
+    const anticipation = choice === null ? '' : (this.adventureFragment()?.choices[choice].anticipation ?? '')
+    this.adventurePreview?.setText(anticipation).setAlpha(choice === null ? 0 : 0.5 + progress / 2)
+  }
+
   private commitAdventureChoice(choiceIndex: number) {
     this.state = chooseAdventureOption(this.state, choiceIndex, Math.random, this.time.now)
     this.destroyAdventureUI()
-
+    this.adventureHold = createChoiceHold()
     if (this.state.status === 'adventure') {
       this.showAdventure()
       return
     }
-
     this.presentLevel()
   }
 
   private destroyAdventureUI() {
     this.adventureUI?.destroy(true)
     this.adventureUI = undefined
+    this.adventurePreview = undefined
     this.adventureChoiceViews = []
-    this.adventureChoiceXs = []
+    this.adventurePointer = null
   }
 
   private showGameOver(reason: string) {

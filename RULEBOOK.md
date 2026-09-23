@@ -13,7 +13,7 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - **Affiniteit:** de blijvende registratie van aangeboden en correct gespeelde blokken per combinatie van zijde en kleur.
 - **Tekstavontuur:** een onderbreking tussen twee levels die uit een reeks fragmenten bestaat en pas eindigt wanneer een keuze daar expliciet toe leidt.
 - **Fragment:** één stap binnen een tekstavontuur: een tekst met één vervolgknop of twee of drie keuzes, waarvan iedere keuze naar een volgend fragment leidt of het avontuur beëindigt.
-- **Keuzewijzer:** de lichtbalk onder de tekstkeuzes; volgt directe selectie met links/rechts of beweegt zolang Shift wordt vastgehouden.
+- **Keuzeopbouw:** het lichtbalkje dat bij de deurhandeling volloopt zolang dezelfde keuze wordt vastgehouden; vóór voltooiing kun je zonder gevolg afbreken.
 - **Aanpak:** de concrete werkwijze bij de deur, die de volgorde van blokken in precies één volgend level verandert.
 
 ## Kernlus
@@ -64,8 +64,11 @@ Dit document beschrijft de spelregels. Visuele vormgeving, animaties en precieze
 - Gebruik één vervolgknop als er niets wezenlijks te kiezen is. Noor heeft eigen waarnemingen, vergissingen en humor; gesprekken leggen niet steeds de waarde van de speler uit.
 - Bij het begin van een spel en na ieder tekstavontuur wordt de afstand tot een willekeurig avontuur getrokken: 2, 3 of 4 levels.
 - De vaste ontmoeting, het deuronderzoek en de deurafloop gaan voor op deze teller. Ieder afgerond level telt hem precies één keer af. Na de deurafloop gaat de gewone afwisseling verder.
-- Bij meerdere opties begint een fragment zonder selectie. Links/rechts selecteert een optie; Shift beweegt desgewenst de lichtbalk. Bij één vervolgknop is die al geselecteerd en volstaat spatie. Spatie bevestigt uitsluitend een selectie.
-- Directe selectie heeft voorrang op Shift als beide tegelijk worden gebruikt. Aan de uiteinden blijft directe selectie staan. De actieve optie heeft een duidelijke rand en stip.
+- Bij meerdere opties begint een fragment zonder selectie. Links/rechts selecteert een optie; Enter bevestigt. Spatie blijft een gelijkwaardig alternatief. Eén vervolgknop is voorgeselecteerd. Klikken of tikken bevestigt gewone keuzes bij loslaten op dezelfde knop.
+- Alleen het fragment met de twee deurhandelingen gebruikt `interaction: 'hold'`: links/rechts vasthouden of de betreffende knop met muis/vinger ingedrukt houden bouwt de keuze in `adventure.choiceHoldMs` (500 ms) op.
+- De lichtbalk en de korte reactie van Noor zijn voorbereiding. Er verandert geen score, verhaalstatus of levelklok vóór bevestiging. Loslaten vóór voltooiing wist alle opbouw. Je hoeft niet precies op tijd los te laten: voltooiing bevestigt automatisch.
+- Buiten de knop bewegen, aanraking annuleren, focusverlies, twee pijlen tegelijk of meerdere gelijktijdige invoerbronnen breken de poging af. Na zo'n onderbreking en na bevestiging moeten de toetsen/aanrakingen eerst worden losgelaten. Een ingedrukte toets mag geen volgend fragment of eerste spelblok activeren.
+- Direct selecteren en Enter blijft ook bij de deur beschikbaar. Er is geen aftellende keuzetijd of straf voor twijfelen. De Shift-wijzer vervalt; gewone fragmenten vereisen geen vasthoudactie.
 - Iedere bevestiging leidt naar één volgend fragment of start één volgend level. Een keuze wordt met verhaal-, fragment- en keuze-id gelogd.
 - Tekstkeuzes kennen geen houdingsclassificatie of afwijkingsbonus. Ze veranderen de score niet. Beloningen voor treffers, combo's en tijd blijven bij het lijnspel.
 
@@ -126,11 +129,11 @@ Deze regels mogen niet bij toeval veranderen tijdens visueel of technisch onderh
 - Herinneringen veranderen nooit de gedeelde bronverhalen en blijven bewaard als de levelstatistieken bij de volgende start worden gewist.
 - Een volgend level bewaart de score; een nieuw spel wist de score.
 - Affiniteit en aanbod worden door de regelkern geregistreerd, niet door de presentatie.
-- Tijdens een tekstavontuur is er geen selectie of precies één selectie; zonder selectie doet spatie niets.
+- Tijdens een tekstavontuur is er geen selectie of precies één selectie; zonder selectie doet bevestigen niets.
 - Het aantal levels tot het volgende tekstavontuur wordt nooit tijdens een lopend level opnieuw getrokken, alleen bij het begin van een spel of na een tekstavontuur.
-- De beweging van de keuzewijzer zelf is presentatie; alleen de uiteindelijk gemaakte keuze is spelstatus.
+- Selectie, opbouw en voorbereidingsreactie zijn presentatie; alleen de bevestigde keuze verandert de spelstatus.
 - Het huidige fragment van een tekstavontuur is spelstatus; welk fragment na een keuze volgt, ligt vast in het avontuur zelf, niet in de presentatie.
 
 ## Afstelbare waarden
 
-Getallen zoals padlengte, punten, het aantal balkstappen tot winst of verlies, route-instellingen, aankomstgrenzen, de mogelijke levelafstand tot een tekstavontuur en de aanpakinstellingen staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.
+Getallen zoals padlengte, punten, het aantal balkstappen tot winst of verlies, route-instellingen, aankomstgrenzen, de mogelijke levelafstand tot een tekstavontuur, de aanpakinstellingen en de vasthoudduur staan één keer in `src/game/config.ts`. Verander ze daar; kopieer ze niet naar scènes of tests.

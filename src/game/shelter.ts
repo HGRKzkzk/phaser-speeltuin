@@ -7,6 +7,7 @@ const approaches: AdventureChoice[] = [
     label: 'Deur optillen',
     description: 'Houd langer dezelfde kleur vast; de pijlen blijven wisselen.',
     shelterApproach: 'lift',
+    anticipation: 'Het hout kraakt. Noor zet haar voeten stevig neer.',
     next: 'end',
   },
   {
@@ -14,6 +15,7 @@ const approaches: AdventureChoice[] = [
     label: 'Scharnieren losmaken',
     description: 'Herhaal langer dezelfde pijl; de kleuren blijven wisselen.',
     shelterApproach: 'hinges',
+    anticipation: 'Het scharnier piept. Noor pakt de deur bij de rand.',
     next: 'end',
   },
 ]
@@ -78,6 +80,7 @@ export function createShelterStory(memory: JourneyMemory): AdventureStory {
       },
       approach: {
         id: 'approach',
+        interaction: 'hold',
         text: 'Je kunt de deur omhoog houden terwijl Noor hem draait, of samen de scharnieren loswerken. “Jij kiest,” zegt ze. “Ik heb mijn duw al gedaan.”',
         choices: approaches,
       },

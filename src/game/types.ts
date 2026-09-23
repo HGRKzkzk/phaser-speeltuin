@@ -53,9 +53,11 @@ export type AdventureChoice = {
   next: string
   route?: JourneyRoute
   shelterApproach?: ShelterApproach
+  anticipation?: string
 }
 
 export type AdventureFragment = {
+  interaction?: 'hold'
   id: string
   text: string
   choices: AdventureChoice[]

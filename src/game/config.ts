@@ -22,6 +22,7 @@ export const gameConfig = {
     },
   },
   adventure: {
+    choiceHoldMs: 500,
     levelGapChoices: [2, 3, 4],
   },
   timing: {

@@ -41,6 +41,7 @@ p {
 }
 
 canvas {
+  touch-action: none;
   display: block;
   max-width: 100%;
 }
